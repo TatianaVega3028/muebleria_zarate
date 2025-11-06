@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "42222661061",
+    "project_id": "muebleria-espinoza",
+    "storage_bucket": "muebleria-espinoza.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42222661061:android:d8bf9242d72a36294b2fac",
+        "android_client_info": {
+          "package_name": "com.example.muebleria_zarate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZHEx8T2VMkYSc5pSGDh5dX39BTZYkMjk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
