@@ -1,15 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.muebleria_zarate">  <!-- 👈 Este debe coincidir con tu google-services.json -->
+    package="com.example.muebleria_zarate">
+
+    <!-- ✅ Permisos necesarios -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="muebleria_zarate"
+        android:label="Mueblería Zárate"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- 👇 ESTA LÍNEA ES IMPORTANTE PARA QUE FIREBASE FUNCIONE -->
+        <!-- 🔹 Canal de notificaciones (Firebase) -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="default_channel" />
+
+        <!-- 🔹 Clave de Google Maps -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBIZrptkE0IGakPhzMzMpq4PaW_gw_D1vk" />
 
         <activity
             android:name=".MainActivity"
@@ -31,17 +41,8 @@
             </intent-filter>
         </activity>
 
-        <!-- No eliminar -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-
-    <!-- Requerido para Flutter -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
 </manifest>

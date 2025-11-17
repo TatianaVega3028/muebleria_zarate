@@ -54,7 +54,7 @@ class AuthService {
       case 'weak-password':
         return 'La contraseña es demasiado débil.';
       default:
-        return 'Error de autenticación: ${e.message}';
+        return 'Error de autenticación.';
     }
   }
 }

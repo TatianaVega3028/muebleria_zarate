@@ -30,7 +30,6 @@ class ProductosService {
         .toList());
   }
 
-
   Future<Producto?> obtenerProductoPorId(String id) async {
     final doc = await _db.collection('Productos').doc(id).get();
     if (doc.exists) {
@@ -39,16 +38,21 @@ class ProductosService {
     return null;
   }
 
+  // 🔍 BÚSQUEDA INTELIGENTE (FUNCIONA CON EL CATÁLOGO QUE TE PASÉ)
+  Future<List<Producto>> searchAdvanced(String query) async {
+    final q = query.toLowerCase().trim();
+    final palabras = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
 
-  Future<List<Producto>> searchByTitle(String query) async {
-    final snapshot = await _db
-        .collection('Productos')
-        .where('titulo', isGreaterThanOrEqualTo: query)
-        .where('titulo', isLessThanOrEqualTo: '$query\uf8ff')
-        .get();
-
-    return snapshot.docs
+    final snapshot = await _db.collection('Productos').get();
+    final todos = snapshot.docs
         .map((doc) => Producto.fromFirestore(doc.data(), doc.id))
         .toList();
+
+    return todos.where((p) {
+      final texto = ('${p.titulo} ${p.descripcion}')
+          .toLowerCase()
+          .replaceAll(RegExp(r'\s+'), ' ');
+      return palabras.every((w) => texto.contains(w));
+    }).toList();
   }
 }
