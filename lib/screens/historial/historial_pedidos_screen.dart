@@ -112,7 +112,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   // Navegar a la pantalla de login
-                  Navigator.pushNamed(context, '/login');
+                  Navigator.pushNamed(context, 'auth/login_screen');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF795548),
@@ -136,7 +136,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             TextButton(
               onPressed: () {
                 // Navegar a la pantalla de registro
-                Navigator.pushNamed(context, '/register');
+                Navigator.pushNamed(context, 'auth/register_screen');
               },
               child: const Text(
                 "¿No tienes cuenta? Regístrate aquí",
@@ -158,6 +158,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   // ---------------------------------------------------------------------
   Widget _buildHistorialContent() {
     final user = FirebaseAuth.instance.currentUser;
+    
+    // Consulta mejorada para asegurar el orden correcto
     final pedidosRef = FirebaseFirestore.instance
         .collection('usuarios')
         .doc(user!.uid)
@@ -284,8 +286,16 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           child: StreamBuilder<QuerySnapshot>(
             stream: pedidosRef.snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return _buildLoadingState();
+              }
+
+              if (snapshot.hasError) {
+                return _buildErrorState();
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return _buildEmptyState();
               }
 
               List<QueryDocumentSnapshot> pedidos = snapshot.data!.docs;
@@ -293,25 +303,42 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               // FILTRO POR ESTADO
               if (filtroEstado != 'Todos') {
                 pedidos = pedidos
-                    .where((p) => (p['estado'] ?? 'Pendiente') == filtroEstado)
+                    .where((p) {
+                      final estado = p['estado'] ?? 'Pendiente';
+                      return estado == filtroEstado;
+                    })
                     .toList();
               }
 
               // FILTRO POR BÚSQUEDA
               if (searchQuery.isNotEmpty) {
                 pedidos = pedidos.where((p) {
-                  final productos = List<Map<String, dynamic>>.from(p['productos']);
-                  final productosStr = productos
-                      .map((e) => e['nombre'].toLowerCase())
-                      .join(" ");
-
-                  return productosStr.contains(searchQuery);
+                  try {
+                    final productos = List<Map<String, dynamic>>.from(p['productos'] ?? []);
+                    final productosStr = productos
+                        .map((e) => (e['nombre'] ?? '').toLowerCase())
+                        .join(" ");
+                    return productosStr.contains(searchQuery);
+                  } catch (e) {
+                    return false;
+                  }
                 }).toList();
               }
 
               if (pedidos.isEmpty) {
-                return _buildEmptyState();
+                return _buildEmptyStateWithFilters();
               }
+
+              // Ordenar por fecha de forma adicional para asegurar el orden
+              pedidos.sort((a, b) {
+                try {
+                  final fechaA = (a['fecha'] as Timestamp).toDate();
+                  final fechaB = (b['fecha'] as Timestamp).toDate();
+                  return fechaB.compareTo(fechaA); // Más reciente primero
+                } catch (e) {
+                  return 0;
+                }
+              });
 
               return ListView.builder(
                 itemCount: pedidos.length,
@@ -320,285 +347,358 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
                   final p = pedidos[index];
-
-                  final productos = List<Map<String, dynamic>>.from(p['productos']);
-                  final estado = p['estado'] ?? 'Pendiente';
-                  final total = (p['total'] ?? 0).toDouble();
-                  final fecha = (p['fecha'] as Timestamp).toDate();
-
-                  final direccion = p['direccion'] ?? 'Sin dirección';
-                  final telefono = p['telefono'] ?? 'Sin teléfono';
-                  final tipoEmpaquetado = p['tipoEmpaquetado'] ?? 'No registrado';
-                  final costoEmpaquetado = p['costoEmpaquetado'] ?? 0;
-                  final metodoPago = p['metodoPago'] ?? 'Desconocido';
-                  final igv = p['igv'] ?? 0;
-                  final envio = p['envio'] ?? 0;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade200,
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.all(16),
-                      collapsedBackgroundColor: Colors.white,
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      collapsedShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-
-                      // 🧾 CABECERA MEJORADA
-                      leading: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF795548).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.shopping_bag_outlined,
-                          color: const Color(0xFF795548),
-                          size: 24,
-                        ),
-                      ),
-
-                      title: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Pedido #${index + 1}",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF8D6E63),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${_getDiaSemana(fecha.weekday)} ${fecha.day}/${fecha.month}/${fecha.year}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4E342E),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Row(
-                          children: [
-                            Text(
-                              "S/. ${total.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF6D4C41),
-                              ),
-                            ),
-                            const Spacer(),
-                            _buildEstadoBonito(estado),
-                          ],
-                        ),
-                      ),
-
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF9F5F3),
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(20),
-                              bottomRight: Radius.circular(20),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 🛒 PRODUCTOS CON FOTOS
-                              _buildSeccionTitulo("Productos comprados"),
-                              const SizedBox(height: 12),
-
-                              ...productos.map((prod) {
-                                final fotoUrl = prod['foto'] ?? '';
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: Colors.white,
-                                    border: Border.all(color: Colors.grey.shade200),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // IMAGEN DEL PRODUCTO
-                                      if (fotoUrl.isNotEmpty)
-                                        Container(
-                                          width: 60,
-                                          height: 60,
-                                          margin: const EdgeInsets.only(right: 12),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
-                                            color: Colors.grey.shade100,
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: CachedNetworkImage(
-                                              imageUrl: fotoUrl,
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) => Container(
-                                                color: Colors.grey.shade200,
-                                                child: Center(
-                                                  child: CircularProgressIndicator(
-                                                    color: const Color(0xFF795548),
-                                                    strokeWidth: 2,
-                                                  ),
-                                                ),
-                                              ),
-                                              errorWidget: (context, url, error) => Container(
-                                                color: Colors.grey.shade200,
-                                                child: const Icon(
-                                                  Icons.chair_outlined,
-                                                  color: Colors.grey,
-                                                  size: 30,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      else
-                                        Container(
-                                          width: 60,
-                                          height: 60,
-                                          margin: const EdgeInsets.only(right: 12),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
-                                            color: Colors.grey.shade200,
-                                          ),
-                                          child: const Icon(
-                                            Icons.chair_outlined,
-                                            color: Colors.grey,
-                                            size: 30,
-                                          ),
-                                        ),
-
-                                      // INFORMACIÓN DEL PRODUCTO
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              prod['nombre'] ?? "Producto",
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF4E342E),
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            _buildInfoRowMejorada("Cantidad", prod['cantidad'].toString()),
-                                            _buildInfoRowMejorada("Precio unitario", "S/. ${prod['precio']}"),
-                                            _buildInfoRowMejorada("Subtotal", "S/. ${prod['subtotal']}"),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-
-                              const SizedBox(height: 16),
-
-                              // 📌 INFORMACIÓN DEL PEDIDO
-                              _buildSeccionTitulo("Información del pedido"),
-                              const SizedBox(height: 12),
-
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Colors.white,
-                                  border: Border.all(color: Colors.grey.shade200),
-                                ),
-                                child: Column(
-                                  children: [
-                                    _buildInfoRowMejorada("Dirección", direccion),
-                                    _buildInfoRowMejorada("Teléfono", telefono),
-                                    _buildInfoRowMejorada("Empaquetado", tipoEmpaquetado),
-                                    _buildInfoRowMejorada("Costo empaquetado", "S/. $costoEmpaquetado"),
-                                    _buildInfoRowMejorada("Método de pago", metodoPago),
-                                    _buildInfoRowMejorada("IGV", "S/. $igv"),
-                                    _buildInfoRowMejorada("Envío", "S/. $envio"),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // 🔢 TOTAL MEJORADO
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: LinearGradient(
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                    colors: [
-                                      const Color(0xFF795548).withOpacity(0.1),
-                                      const Color(0xFF5D4037).withOpacity(0.05),
-                                    ],
-                                  ),
-                                  border: Border.all(color: const Color(0xFFD7CCC8)),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      "Total del pedido",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF4E342E),
-                                      ),
-                                    ),
-                                    Text(
-                                      "S/. ${total.toStringAsFixed(2)}",
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF4E342E),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  );
+                  return _buildPedidoItem(p, index);
                 },
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPedidoItem(QueryDocumentSnapshot p, int index) {
+    try {
+      final productos = List<Map<String, dynamic>>.from(p['productos'] ?? []);
+      final estado = p['estado'] ?? 'Pendiente';
+      final total = (p['total'] ?? 0).toDouble();
+      
+      // Manejo seguro de la fecha
+      DateTime fecha;
+      try {
+        if (p['fecha'] is Timestamp) {
+          fecha = (p['fecha'] as Timestamp).toDate();
+        } else if (p['fecha'] is String) {
+          fecha = DateTime.parse(p['fecha']);
+        } else {
+          fecha = DateTime.now();
+        }
+      } catch (e) {
+        fecha = DateTime.now();
+      }
+
+      final direccion = p['direccion'] ?? 'Sin dirección';
+      final telefono = p['telefono'] ?? 'Sin teléfono';
+      final tipoEmpaquetado = p['tipoEmpaquetado'] ?? 'No registrado';
+      final costoEmpaquetado = (p['costoEmpaquetado'] ?? 0).toDouble();
+      final metodoPago = p['metodoPago'] ?? 'Desconocido';
+      final igv = (p['igv'] ?? 0).toDouble();
+      final envio = (p['envio'] ?? 0).toDouble();
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.all(16),
+          collapsedBackgroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          
+          // 🧾 CABECERA MEJORADA
+          leading: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFF795548).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.shopping_bag_outlined,
+              color: const Color(0xFF795548),
+              size: 24,
+            ),
+          ),
+
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Pedido #${index + 1}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF8D6E63),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "${_getDiaSemana(fecha.weekday)} ${fecha.day}/${fecha.month}/${fecha.year}",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4E342E),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "${_formatHora(fecha)}",
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF8D6E63),
+                ),
+              ),
+            ],
+          ),
+
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Text(
+                  "S/. ${total.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6D4C41),
+                  ),
+                ),
+                const Spacer(),
+                _buildEstadoBonito(estado),
+              ],
+            ),
+          ),
+
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F5F3),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🛒 PRODUCTOS CON FOTOS
+                  _buildSeccionTitulo("Productos comprados"),
+                  const SizedBox(height: 12),
+
+                  if (productos.isEmpty)
+                    _buildEmptyProductos()
+                  else
+                    ...productos.map((prod) => _buildProductoItem(prod)).toList(),
+
+                  const SizedBox(height: 16),
+
+                  // 📌 INFORMACIÓN DEL PEDIDO
+                  _buildSeccionTitulo("Información del pedido"),
+                  const SizedBox(height: 12),
+
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInfoRowMejorada("Dirección", direccion),
+                        _buildInfoRowMejorada("Teléfono", telefono),
+                        _buildInfoRowMejorada("Empaquetado", tipoEmpaquetado),
+                        _buildInfoRowMejorada("Costo empaquetado", "S/. ${costoEmpaquetado.toStringAsFixed(2)}"),
+                        _buildInfoRowMejorada("Método de pago", metodoPago),
+                        _buildInfoRowMejorada("IGV", "S/. ${igv.toStringAsFixed(2)}"),
+                        _buildInfoRowMejorada("Envío", "S/. ${envio.toStringAsFixed(2)}"),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 🔢 TOTAL MEJORADO
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          const Color(0xFF795548).withOpacity(0.1),
+                          const Color(0xFF5D4037).withOpacity(0.05),
+                        ],
+                      ),
+                      border: Border.all(color: const Color(0xFFD7CCC8)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Total del pedido",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4E342E),
+                          ),
+                        ),
+                        Text(
+                          "S/. ${total.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4E342E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
+      );
+    } catch (e) {
+      return _buildErrorPedidoItem();
+    }
+  }
+
+  Widget _buildProductoItem(Map<String, dynamic> prod) {
+    final fotoUrl = prod['foto']?.toString() ?? '';
+    final nombre = prod['nombre']?.toString() ?? 'Producto';
+    final cantidad = prod['cantidad']?.toString() ?? '0';
+    final precio = (prod['precio'] ?? 0).toDouble();
+    final subtotal = (prod['subtotal'] ?? 0).toDouble();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // IMAGEN DEL PRODUCTO
+          Container(
+            width: 60,
+            height: 60,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade100,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: fotoUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: fotoUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey.shade200,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: const Color(0xFF795548),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => _buildPlaceholderIcon(),
+                    )
+                  : _buildPlaceholderIcon(),
+            ),
+          ),
+
+          // INFORMACIÓN DEL PRODUCTO
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  nombre,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF4E342E),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                _buildInfoRowMejorada("Cantidad", cantidad),
+                _buildInfoRowMejorada("Precio unitario", "S/. ${precio.toStringAsFixed(2)}"),
+                _buildInfoRowMejorada("Subtotal", "S/. ${subtotal.toStringAsFixed(2)}"),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderIcon() {
+    return Container(
+      color: Colors.grey.shade200,
+      child: const Icon(
+        Icons.chair_outlined,
+        color: Colors.grey,
+        size: 30,
+      ),
+    );
+  }
+
+  Widget _buildEmptyProductos() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: const Center(
+        child: Text(
+          "No hay información de productos",
+          style: TextStyle(
+            color: Color(0xFF8D6E63),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorPedidoItem() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "Error al cargar la información del pedido",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -614,6 +714,25 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             style: TextStyle(
               fontSize: 16,
               color: Color(0xFF8D6E63),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: const Color(0xFF8D6E63)),
+          const SizedBox(height: 16),
+          const Text(
+            "Error al cargar los pedidos",
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFF5D4037),
             ),
           ),
         ],
@@ -649,11 +768,53 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          const Text(
+            "Realiza tu primer pedido para comenzar",
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF8D6E63),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateWithFilters() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: const Color(0xFF795548).withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off,
+              size: 50,
+              color: const Color(0xFF8D6E63),
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(
             filtroEstado != 'Todos' 
                 ? "No hay pedidos con estado '$filtroEstado'"
                 : "No se encontraron pedidos",
             style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF5D4037),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Intenta con otros filtros o términos de búsqueda",
+            style: TextStyle(
               fontSize: 14,
               color: Color(0xFF8D6E63),
             ),
@@ -774,6 +935,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
   String _getDiaSemana(int dia) {
     final dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    return dias[dia - 1];
+    return dias[dia];
+  }
+
+  String _formatHora(DateTime fecha) {
+    return '${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}';
   }
 }

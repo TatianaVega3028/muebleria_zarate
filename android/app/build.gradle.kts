@@ -1,9 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+// Cargar las propiedades del keystore
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // El plugin de Flutter debe ir después de los anteriores
     id("dev.flutter.flutter-gradle-plugin")
-    // 🔥 Plugin necesario para enlazar Firebase (usa tu google-services.json)
     id("com.google.gms.google-services")
 }
 
@@ -22,19 +30,26 @@ android {
     }
 
     defaultConfig {
-        // 🆔 ID del paquete (debe coincidir con google-services.json)
         applicationId = "com.example.muebleria_zarate"
-
-        // ⚙️ Firebase requiere al menos minSdk 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+        }
+    }
+
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            // minifyEnabled = true // opcional
         }
     }
 }
@@ -44,10 +59,7 @@ flutter {
 }
 
 dependencies {
-    // 📦 Importa la plataforma BoM de Firebase (para manejar versiones en conjunto)
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
-
-    // 🔥 Dependencias de Firebase que estás usando
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")

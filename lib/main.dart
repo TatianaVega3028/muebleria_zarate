@@ -32,7 +32,7 @@ class MuebleriaApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/catalog': (context) => CatalogScreen(),
         '/historial': (context) => const HistorialPedidosScreen(),
-        '/perfil':(context) => const PerfilScreen(),
+        '/perfil': (context) => const PerfilScreen(),
       },
     );
   }
