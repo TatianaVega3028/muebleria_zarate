@@ -2,7 +2,7 @@ name: muebleria_zarate
 description: "Aplicación Flutter para la Mueblería Zárate"
 publish_to: 'none'
 
-version: 1.0.0+4
+version: 1.4.0
 
 environment:
   sdk: ^3.9.2
@@ -28,6 +28,8 @@ dependencies:
 
   # 🔹 Animaciones Lottie
   lottie: ^2.7.0
+  image_picker: ^1.0.4
+  firebase_storage: ^11.0.0
 
 dev_dependencies:
   flutter_test:
@@ -45,7 +47,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icons/icon.png"               # ← CORREGIDO
+  image_path: "assets/icon1.png"               # ← CORREGIDO
   adaptive_icon_background: "#D2B48C"
   adaptive_icon_foreground: "assets/icons/icon.png" # ← CORREGIDO
 

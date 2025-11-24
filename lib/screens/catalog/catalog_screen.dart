@@ -8,6 +8,8 @@ import '../../services/carrito_service.dart';
 import '../product_detail/product_detail_screen.dart';
 import '../carrito/carrito_screen.dart';
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 
@@ -15,7 +17,7 @@ class CatalogScreen extends StatefulWidget {
   State<CatalogScreen> createState() => _CatalogScreenState();
 }
 
-class _CatalogScreenState extends State<CatalogScreen> {
+class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
   final ProductosService _service = ProductosService();
   final CarritoService _carritoService = CarritoService();
   final ScrollController _scrollController = ScrollController();
@@ -36,9 +38,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  // 🔥🔥🔥 CUANDO EL USUARIO REGRESA A ESTA PANTALLA → AUTOMÁTICAMENTE REFRESCA
+  @override
+  void didPopNext() {
+    setState(() {
+      searchResults = null;
+      searchQuery = '';
+    });
   }
 
   Future<void> _refresh() async {
@@ -71,6 +89,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       nombre: p.titulo,
       precio: p.precio,
       imagen: p.fotos.isNotEmpty ? p.fotos.first : '',
+      cantidad: 1,
     ));
 
     setState(() {});
@@ -108,8 +127,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined,
-                    color: Colors.white),
+                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -117,7 +135,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ).then((_) => setState(() {}));
                 },
               ),
-              if (_carritoService.items.isNotEmpty)
+              if (_carritoService.totalCantidadProductos > 0)
                 Positioned(
                   right: 6,
                   top: 6,
@@ -128,7 +146,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      _carritoService.items.length.toString(),
+                      _carritoService.totalCantidadProductos > 99
+                          ? '99+'
+                          : _carritoService.totalCantidadProductos.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -146,7 +166,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
         onRefresh: _refresh,
         child: Column(
           children: [
-            // Buscador
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: TextField(
@@ -155,8 +174,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   prefixIcon: const Icon(Icons.search, color: brown),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -173,31 +191,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
             ),
 
-            // Categorías
             SizedBox(
               height: 64,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 itemCount: _categorias.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final cat = _categorias[i];
-                  final selected = (selectedCategory.isEmpty &&
-                          cat == 'Todas') ||
+                  final selected = (selectedCategory.isEmpty && cat == 'Todas') ||
                       selectedCategory == cat;
 
                   return ChoiceChip(
                     label: Text(cat),
                     selected: selected,
-                    onSelected: (_) => setState(() =>
-                        selectedCategory = (cat == 'Todas' ? '' : cat)),
+                    onSelected: (_) => setState(
+                        () => selectedCategory = (cat == 'Todas' ? '' : cat)),
                     selectedColor: brown,
                     backgroundColor: const Color(0xFFD7CCC8),
                     labelStyle: TextStyle(
-                      color:
-                          selected ? Colors.white : Colors.brown[800],
+                      color: selected ? Colors.white : Colors.brown[800],
                       fontWeight: FontWeight.w500,
                     ),
                   );
@@ -231,8 +245,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget _buildStreamGrid(int crossAxis, Color brown) {
     return StreamBuilder<List<Producto>>(
       stream: _service.streamProductos(
-        categoria:
-            selectedCategory.isEmpty ? null : selectedCategory,
+        categoria: selectedCategory.isEmpty ? null : selectedCategory,
       ),
       builder: (context, snap) {
         if (!snap.hasData) {
@@ -244,8 +257,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  Widget _buildGrid(
-      List<Producto> productos, int crossAxis, Color brown) {
+  Widget _buildGrid(List<Producto> productos, int crossAxis, Color brown) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: GridView.builder(
@@ -259,8 +271,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemBuilder: (context, i) =>
-            _productCard(productos[i], brown),
+        itemBuilder: (context, i) => _productCard(productos[i], brown),
       ),
     );
   }
@@ -282,20 +293,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
         elevation: 4,
         color: Colors.white,
         shadowColor: brown.withOpacity(0.2),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Imagen
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Imagen
                     if (imageUrl != null)
                       CachedNetworkImage(
                         imageUrl: imageUrl,
@@ -308,10 +315,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     else
                       Container(
                         color: Colors.brown[50],
-                        child: const Icon(Icons.chair, size: 48, color: Colors.brown),
+                        child:
+                            const Icon(Icons.chair, size: 48, color: Colors.brown),
                       ),
 
-                    // 🔥 SOLO EL PRECIO SE MANTIENE (NO EL TEXTO "DISPONIBLE")
                     Positioned(
                       left: 8,
                       top: 8,
@@ -341,7 +348,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
             ),
 
-            // Información debajo
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
               child: Column(
@@ -351,8 +357,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     p.titulo,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, color: brown),
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, color: brown),
                   ),
                   const SizedBox(height: 6),
 
@@ -361,12 +367,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       Expanded(
                         child: Text(
                           p.categoria,
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.black54),
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.black54),
                         ),
                       ),
-
-                      /// Se mantiene SOLO aquí el texto Disponible / Agotado
                       Text(
                         p.stock > 0 ? 'Disponible' : 'Agotado',
                         style: TextStyle(

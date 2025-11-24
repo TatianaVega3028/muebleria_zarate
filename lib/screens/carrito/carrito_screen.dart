@@ -77,10 +77,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   // ---------------------------------------------------------------------
-  //  CÁLCULOS
+  //  CÁLCULOS - ACTUALIZADOS PARA USAR EL NUEVO SERVICE
   // ---------------------------------------------------------------------
-  double get subtotal =>
-      carritoService.items.fold(0.0, (sum, item) => sum + item.precio * item.cantidad);
+  double get subtotal => carritoService.subtotal;
 
   double get costoEmpaquetado {
     double costo = 0;
@@ -92,33 +91,31 @@ class _CarritoScreenState extends State<CarritoScreen> {
         costo = 10;
         break;
     }
-    int cantidadProductos =
-        carritoService.items.fold(0, (sum, item) => sum + item.cantidad);
-    return costo * cantidadProductos;
+    return costo * carritoService.totalCantidadProductos;
   }
 
-  double get igv => (subtotal + costoEmpaquetado) * 0.18;
-  double get envio => subtotal >= 150 ? 0 : 10;
-  double get totalFinal => subtotal + costoEmpaquetado + igv + envio;
+  double get igv => carritoService.calcularIgv(costoEmpaquetado);
+  double get envio => carritoService.envio;
+  double get totalFinal => carritoService.calcularTotal(costoEmpaquetado: costoEmpaquetado);
 
   // ---------------------------------------------------------------------
-  //  ACCIONES DEL CARRITO
+  //  ACCIONES DEL CARRITO - ACTUALIZADAS
   // ---------------------------------------------------------------------
 
   void _incrementar(CarritoItem item) {
-    setState(() => carritoService.incrementar(item));
+    setState(() => carritoService.incrementar(item.id));
   }
 
   void _decrementar(CarritoItem item) {
-    setState(() => carritoService.decrementar(item));
+    setState(() => carritoService.decrementar(item.id));
   }
 
   void _eliminarProducto(CarritoItem item) {
-    setState(() => carritoService.eliminar(item));
+    setState(() => carritoService.eliminar(item.id));
   }
 
   void _vaciarCarrito() {
-    if (carritoService.items.isEmpty) return;
+    if (carritoService.estaVacio) return;
 
     showDialog(
       context: context,
@@ -203,7 +200,16 @@ class _CarritoScreenState extends State<CarritoScreen> {
       return;
     }
 
+    // Usar el nuevo método para validar si puede proceder al checkout
+    if (!carritoService.puedeProcederCheckout) {
+      _alerta("El carrito está vacío", Colors.orange);
+      return;
+    }
+
     setState(() => _isLoading = true);
+
+    // Usar el método de resumen del nuevo service para mayor precisión
+    final resumen = carritoService.obtenerResumenPedido(costoEmpaquetado: costoEmpaquetado);
 
     final pedido = {
       "productos": carritoService.items
@@ -216,12 +222,12 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 "foto": p.imagen,
               })
           .toList(),
-      "subtotal": subtotal,
-      "costoEmpaquetado": costoEmpaquetado,
+      "subtotal": resumen['subtotal']!,
+      "costoEmpaquetado": resumen['costoEmpaquetado']!,
       "tipoEmpaquetado": _tipoEmpaquetado,
-      "igv": igv,
-      "envio": envio,
-      "total": totalFinal,
+      "igv": resumen['igv']!,
+      "envio": resumen['envio']!,
+      "total": resumen['total']!,
       "direccion": direccion,
       "telefono": telefono,
       "metodoPago": _metodoPago,
@@ -237,7 +243,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
           .collection("Pedidos")
           .add(pedido);
 
-      carritoService.limpiar();
+      // Usar el nuevo método para reiniciar el carrito
+      carritoService.reiniciarCarrito();
       _alerta("🎉 Pedido registrado con éxito", Colors.green);
 
       if (mounted) Navigator.pop(context);
@@ -280,7 +287,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          if (carritoService.items.isNotEmpty && _userLoggedIn)
+          if (!carritoService.estaVacio && _userLoggedIn)
             Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -299,8 +306,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
   }
 
   Widget _buildBody() {
-    // Si el carrito está vacío
-    if (carritoService.items.isEmpty) {
+    // Si el carrito está vacío - usando el nuevo getter
+    if (carritoService.estaVacio) {
       return _buildCarritoVacio();
     }
 

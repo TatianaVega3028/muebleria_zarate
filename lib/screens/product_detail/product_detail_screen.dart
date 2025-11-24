@@ -47,7 +47,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ).then((_) => setState(() {}));
                 },
               ),
-              if (_carrito.items.isNotEmpty)
+              // ACTUALIZADO: Usar totalCantidadProductos
+              if (_carrito.totalCantidadProductos > 0)
                 Positioned(
                   right: 6,
                   top: 6,
@@ -58,7 +59,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      _carrito.items.length.toString(),
+                      // ACTUALIZADO: Mostrar cantidad total de productos
+                      _carrito.totalCantidadProductos > 99 
+                          ? '99+' 
+                          : _carrito.totalCantidadProductos.toString(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -206,6 +210,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         imagen: producto.fotos.isNotEmpty
                                             ? producto.fotos.first
                                             : '',
+                                        cantidad: 1, // AGREGADO: cantidad explícita
                                       ));
 
                                       setState(() {});

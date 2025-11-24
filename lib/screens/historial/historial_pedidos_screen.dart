@@ -111,8 +111,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navegar a la pantalla de login
-                  Navigator.pushNamed(context, 'auth/login_screen');
+                  // CORREGIDO: Usar la misma ruta que en PerfilScreen
+                  Navigator.pushNamed(context, '/login');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF795548),
@@ -135,8 +135,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
-                // Navegar a la pantalla de registro
-                Navigator.pushNamed(context, 'auth/register_screen');
+                // CORREGIDO: Usar la misma ruta que en PerfilScreen
+                Navigator.pushNamed(context, '/register');
               },
               child: const Text(
                 "¿No tienes cuenta? Regístrate aquí",
