@@ -4,6 +4,7 @@ import '../models/producto.dart';
 class ProductosService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // 🟫 OBTENER TODOS LOS PRODUCTOS
   Stream<List<Producto>> obtenerProductos() {
     return _db.collection('Productos').snapshots().map(
         (snapshot) => snapshot.docs
@@ -11,6 +12,7 @@ class ProductosService {
             .toList());
   }
 
+  // 🟫 STREAM FILTRADO (CATEGORIAS / DESTACADOS)
   Stream<List<Producto>> streamProductos({
     String? categoria,
     bool soloDestacados = false,
@@ -30,6 +32,7 @@ class ProductosService {
         .toList());
   }
 
+  // 🟫 OBTENER PRODUCTO POR ID
   Future<Producto?> obtenerProductoPorId(String id) async {
     final doc = await _db.collection('Productos').doc(id).get();
     if (doc.exists) {
@@ -38,7 +41,19 @@ class ProductosService {
     return null;
   }
 
-  // 🔍 BÚSQUEDA INTELIGENTE (FUNCIONA CON EL CATÁLOGO QUE TE PASÉ)
+  // 🟫 MÉTODO NUEVO — PARA PRODUCTOS SIMILARES
+  Future<List<Producto>> obtenerProductosPorCategoria(String categoria) async {
+    final query = await _db
+        .collection('Productos')
+        .where('categoria', isEqualTo: categoria)
+        .get();
+
+    return query.docs
+        .map((doc) => Producto.fromFirestore(doc.data(), doc.id))
+        .toList();
+  }
+
+  // 🟫 BÚSQUEDA INTELIGENTE
   Future<List<Producto>> searchAdvanced(String query) async {
     final q = query.toLowerCase().trim();
     final palabras = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
