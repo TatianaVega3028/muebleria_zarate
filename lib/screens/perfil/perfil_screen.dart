@@ -1,4 +1,4 @@
-import 'dart:convert'; // Para convertir la foto a texto
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,13 +16,27 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool _isUploading = false;
+  bool _userLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
+    _checkAuthentication();
+  }
+
+  // ---------------------------------------------------------------------
+  //  VERIFICAR AUTENTICACIÓN
+  // ---------------------------------------------------------------------
+  void _checkAuthentication() {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      _getUserData(user.uid);
+    setState(() {
+      _userLoggedIn = user != null;
+    });
+
+    if (_userLoggedIn) {
+      _getUserData(user!.uid);
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -235,10 +249,86 @@ class _PerfilScreenState extends State<PerfilScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------
+  //  PANTALLA: USUARIO NO LOGUEADO
+  // ---------------------------------------------------------------------
+  Widget _buildUsuarioNoLogueado() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD7CCC8).withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.person_outline, size: 60, color: Color(0xFFA1887F)),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Inicia sesión para ver tu perfil",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4E342E),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Accede a tu cuenta para gestionar tu perfil y ver tu información personal",
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/login');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6D4C41),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text("Iniciar sesión"),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/register');
+              },
+              child: const Text(
+                "¿No tienes cuenta? Regístrate",
+                style: TextStyle(
+                  color: Color(0xFF6D4C41),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mi Perfil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -247,20 +337,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
-          if (user != null && _userData != null)
+          if (_userLoggedIn && _userData != null)
             Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-              child: IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => _editarPerfil(context, user.uid)),
+              child: IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => _editarPerfil(context, FirebaseAuth.instance.currentUser!.uid)),
             ),
         ],
       ),
       backgroundColor: const Color(0xFFF9F5F3),
-      body: user == null
-          ? const Center(child: Text("Inicia Sesión"))
-          : _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF795548)))
-              : _buildContent(user),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF795548)))
+          : _userLoggedIn 
+              ? _buildContent(FirebaseAuth.instance.currentUser!)
+              : _buildUsuarioNoLogueado(),
     );
   }
 

@@ -408,20 +408,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: primaryColor,
-                      side: BorderSide(color: primaryColor),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text("Regresar"),
-                  ),
-                ),
+
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
