@@ -58,7 +58,7 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
-    }
+    }*/
 }
 
 flutter {
