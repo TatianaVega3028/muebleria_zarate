@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/carrito_item.dart';
 import '../../services/carrito_service.dart';
+import '../../services/email_service.dart';
 
 class CarritoScreen extends StatefulWidget {
   const CarritoScreen({super.key});
@@ -46,7 +47,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
     setState(() {
       _userLoggedIn = user != null;
     });
-    
+
     if (_userLoggedIn) {
       _cargarDatosUsuario();
     }
@@ -96,7 +97,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
   double get igv => carritoService.calcularIgv(costoEmpaquetado);
   double get envio => carritoService.envio;
-  double get totalFinal => carritoService.calcularTotal(costoEmpaquetado: costoEmpaquetado);
+  double get totalFinal =>
+      carritoService.calcularTotal(costoEmpaquetado: costoEmpaquetado);
 
   // ---------------------------------------------------------------------
   //  ACCIONES DEL CARRITO - ACTUALIZADAS
@@ -126,7 +128,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
           "Vaciar carrito",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: const Text("¿Seguro que deseas eliminar todos los productos del carrito?"),
+        content: const Text(
+          "¿Seguro que deseas eliminar todos los productos del carrito?",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -141,7 +145,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text("Vaciar"),
           ),
@@ -177,7 +183,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text("Iniciar Sesión"),
           ),
@@ -209,18 +217,22 @@ class _CarritoScreenState extends State<CarritoScreen> {
     setState(() => _isLoading = true);
 
     // Usar el método de resumen del nuevo service para mayor precisión
-    final resumen = carritoService.obtenerResumenPedido(costoEmpaquetado: costoEmpaquetado);
+    final resumen = carritoService.obtenerResumenPedido(
+      costoEmpaquetado: costoEmpaquetado,
+    );
 
     final pedido = {
       "productos": carritoService.items
-          .map((p) => {
-                "id": p.id,
-                "nombre": p.nombre,
-                "precio": p.precio,
-                "cantidad": p.cantidad,
-                "subtotal": p.precio * p.cantidad,
-                "foto": p.imagen,
-              })
+          .map(
+            (p) => {
+              "id": p.id,
+              "nombre": p.nombre,
+              "precio": p.precio,
+              "cantidad": p.cantidad,
+              "subtotal": p.precio * p.cantidad,
+              "foto": p.imagen,
+            },
+          )
           .toList(),
       "subtotal": resumen['subtotal']!,
       "costoEmpaquetado": resumen['costoEmpaquetado']!,
@@ -237,11 +249,18 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
-      await FirebaseFirestore.instance
+      final docRef = await FirebaseFirestore.instance
           .collection("usuarios")
           .doc(user.uid)
           .collection("Pedidos")
           .add(pedido);
+
+      // 📧 Enviar correo con nota de venta en PDF
+      EmailService.enviarNotaVenta(
+        userEmail: user.email!,
+        pedidoId: docRef.id,
+        pedido: pedido,
+      );
 
       // Usar el nuevo método para reiniciar el carrito
       carritoService.reiniciarCarrito();
@@ -277,12 +296,12 @@ class _CarritoScreenState extends State<CarritoScreen> {
         backgroundColor: primaryColor,
         elevation: 0,
         title: const Text(
-          "Carrito de Compras", 
+          "Carrito de Compras",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
-          )
+          ),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -295,10 +314,14 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.white,
+                  size: 22,
+                ),
                 onPressed: _vaciarCarrito,
               ),
-            )
+            ),
         ],
       ),
       body: _buildBody(),
@@ -357,11 +380,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 color: lightColor.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.person_outline,
-                size: 60,
-                color: accentColor,
-              ),
+              child: Icon(Icons.person_outline, size: 60, color: accentColor),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -376,19 +395,13 @@ class _CarritoScreenState extends State<CarritoScreen> {
             const SizedBox(height: 12),
             Text(
               "Tienes ${carritoService.items.length} producto(s) en tu carrito",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             const Text(
               "Inicia sesión para proceder con la compra",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -494,10 +507,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
           const SizedBox(height: 8),
           Text(
             "Agrega productos para continuar",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 32),
           ElevatedButton(
@@ -511,7 +521,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
               ),
             ),
             child: const Text("Seguir comprando"),
-          )
+          ),
         ],
       ),
     );
@@ -641,7 +651,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -672,25 +685,31 @@ class _CarritoScreenState extends State<CarritoScreen> {
                         children: [
                           IconButton(
                             onPressed: () => _decrementar(item),
-                            icon: Icon(Icons.remove, size: 18, color: primaryColor),
+                            icon: Icon(
+                              Icons.remove,
+                              size: 18,
+                              color: primaryColor,
+                            ),
                             padding: const EdgeInsets.all(4),
                           ),
                           Text(
                             "${item.cantidad}",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           IconButton(
                             onPressed: () => _incrementar(item),
-                            icon: Icon(Icons.add, size: 18, color: primaryColor),
+                            icon: Icon(
+                              Icons.add,
+                              size: 18,
+                              color: primaryColor,
+                            ),
                             padding: const EdgeInsets.all(4),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // BOTÓN ELIMINAR
                     Container(
                       decoration: BoxDecoration(
@@ -699,7 +718,11 @@ class _CarritoScreenState extends State<CarritoScreen> {
                       ),
                       child: IconButton(
                         onPressed: () => _eliminarProducto(item),
-                        icon: Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 20,
+                          color: Colors.red,
+                        ),
                         padding: const EdgeInsets.all(6),
                       ),
                     ),
@@ -767,7 +790,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -803,12 +826,17 @@ class _CarritoScreenState extends State<CarritoScreen> {
         activeColor: primaryColor,
         title: Row(
           children: [
-            Icon(icon, color: _metodoPago == value ? primaryColor : Colors.grey),
+            Icon(
+              icon,
+              color: _metodoPago == value ? primaryColor : Colors.grey,
+            ),
             const SizedBox(width: 8),
             Text(
               value,
               style: TextStyle(
-                fontWeight: _metodoPago == value ? FontWeight.bold : FontWeight.normal,
+                fontWeight: _metodoPago == value
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
           ],
@@ -826,7 +854,11 @@ class _CarritoScreenState extends State<CarritoScreen> {
       children: [
         _radioEmpaque("Simple (Gratis)", "Simple", Icons.inventory_2_outlined),
         _radioEmpaque("Doble (+S/.5)", "Doble", Icons.layers_outlined),
-        _radioEmpaque("Completo (+S/.10)", "Completo", Icons.card_giftcard_outlined),
+        _radioEmpaque(
+          "Completo (+S/.10)",
+          "Completo",
+          Icons.card_giftcard_outlined,
+        ),
       ],
     );
   }
@@ -838,7 +870,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
         color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _tipoEmpaquetado == value ? primaryColor : Colors.grey.shade300,
+          color: _tipoEmpaquetado == value
+              ? primaryColor
+              : Colors.grey.shade300,
           width: _tipoEmpaquetado == value ? 1.5 : 1,
         ),
       ),
@@ -848,12 +882,17 @@ class _CarritoScreenState extends State<CarritoScreen> {
         activeColor: primaryColor,
         title: Row(
           children: [
-            Icon(icon, color: _tipoEmpaquetado == value ? primaryColor : Colors.grey),
+            Icon(
+              icon,
+              color: _tipoEmpaquetado == value ? primaryColor : Colors.grey,
+            ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                fontWeight: _tipoEmpaquetado == value ? FontWeight.bold : FontWeight.normal,
+                fontWeight: _tipoEmpaquetado == value
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
           ],
@@ -881,10 +920,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
           _rowResumen("IGV (18%)", igv),
           _rowResumen("Envío", envio),
           const SizedBox(height: 8),
-          Container(
-            height: 1,
-            color: Colors.grey.shade300,
-          ),
+          Container(height: 1, color: Colors.grey.shade300),
           const SizedBox(height: 8),
           _rowResumen("TOTAL", totalFinal, bold: true),
         ],
@@ -958,10 +994,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                   const SizedBox(width: 8),
                   const Text(
                     "Finalizar compra",
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 8),
                   Container(

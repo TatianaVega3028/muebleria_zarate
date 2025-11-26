@@ -2,7 +2,7 @@ name: muebleria_zarate
 description: "Aplicación Flutter para la Mueblería Zárate"
 publish_to: 'none'
 
-version: 1.5.2
+version: 1.5.3
 
 environment:
   sdk: ^3.9.2
@@ -29,6 +29,15 @@ dependencies:
   # 🔹 Animaciones Lottie
   lottie: ^2.7.0
   image_picker: ^1.0.4
+  
+  # 🔹 Generación de PDF para notas de venta
+  pdf: ^3.10.7
+  
+  # 🔹 Envío de correos vía SMTP
+  mailer: ^6.1.2
+  
+  # 🔹 Acceso a directorios temporales
+  path_provider: ^2.1.1
 
 dev_dependencies:
   flutter_test:
