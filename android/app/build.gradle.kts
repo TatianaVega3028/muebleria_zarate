@@ -1,7 +1,7 @@
 import java.util.Properties
 import java.io.FileInputStream
 
-// Cargar las propiedades del keystore
+// Cargar las propiedades del keystore (si existen)
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -37,7 +37,9 @@ android {
         versionName = flutter.versionName
     }
 
-    /*signingConfigs {
+    // --- CORRECCIÓN: Comentamos la configuración de firma para evitar el error ---
+    /*
+    signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
@@ -45,10 +47,16 @@ android {
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
+    */
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Comentamos esta línea porque "release" no existe si comentamos signingConfigs arriba
+            // signingConfig = signingConfigs.getByName("release")
+            
+            // Opcional: Configuración básica para release sin firma (para pruebas locales)
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }*/
 }
