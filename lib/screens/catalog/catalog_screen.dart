@@ -7,6 +7,9 @@ import '../../models/carrito_item.dart';
 import '../../services/carrito_service.dart';
 import '../product_detail/product_detail_screen.dart';
 import '../carrito/carrito_screen.dart';
+import '../../services/favoritos_service.dart';
+import '../../screens/catalog/favoritos_page.dart';
+
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -118,12 +121,25 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
         backgroundColor: brown,
         elevation: 3,
         title: const Text(
-          'Catálogo de Mueblería Zárate',
+          'Catálogo',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+
+          //Lo del icono de favoritos//
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FavoritosPage()),
+              );
+            },
+          ),
+
+          //icono carrito//
           Stack(
             children: [
               IconButton(
@@ -343,6 +359,37 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                         ),
                       ),
                     ),
+
+                    //corazon//
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          FavoritosService().toggleFavorito(p);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            shape: BoxShape.circle,
+                          ),
+                          child: ValueListenableBuilder(
+                            valueListenable: FavoritosService().favoritosNotifier,
+                            builder: (context, favoritos, _) {
+                              final esFavorito = FavoritosService().esFavorito(p.id);
+
+                              return Icon(
+                                esFavorito ? Icons.favorite : Icons.favorite_border,
+                                color: esFavorito ? Colors.red : Colors.grey,
+                                size: 24,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
                   ],
                 ),
               ),
