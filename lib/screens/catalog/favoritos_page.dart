@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/favoritos_service.dart';
 import '../../models/producto.dart';
+import '../product_detail/product_detail_screen.dart';
 
 class FavoritosPage extends StatefulWidget {
   const FavoritosPage({Key? key}) : super(key: key);
@@ -12,7 +13,7 @@ class FavoritosPage extends StatefulWidget {
 class _FavoritosPageState extends State<FavoritosPage> {
   @override
   Widget build(BuildContext context) {
-    // 🎨 Tus colores (copiados del catálogo)
+    // 🎨 Tus colores (mismos del catálogo)
     const brown = Color(0xFF795548);
     const background = Color(0xFFF9F5F3);
 
@@ -48,13 +49,22 @@ class _FavoritosPageState extends State<FavoritosPage> {
           : ListView.separated(
               itemCount: lista.length,
               separatorBuilder: (_, __) => Divider(
-                color: Colors.grey.shade300,
+                color: Colors.grey,
                 height: 1,
               ),
               itemBuilder: (context, index) {
                 final p = lista[index];
 
                 return ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(productId: p.id),
+                      ),
+                    );
+                  },
+
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
 
@@ -70,8 +80,8 @@ class _FavoritosPageState extends State<FavoritosPage> {
                         : Container(
                             width: 65,
                             height: 65,
-                            color: Colors.brown[50],
-                            child: const Icon(Icons.chair, color: Colors.brown),
+                            color: Colors.brown,
+                            child: const Icon(Icons.chair, color: Colors.white),
                           ),
                   ),
 
@@ -104,5 +114,3 @@ class _FavoritosPageState extends State<FavoritosPage> {
     );
   }
 }
-
-
