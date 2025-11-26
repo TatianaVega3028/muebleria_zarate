@@ -2,13 +2,8 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// 📄 Servicio para generar PDFs de notas de venta
-///
-/// Este servicio genera un PDF profesional con:
-/// - Logo y datos de la empresa
-/// - Información del pedido
-/// - Lista de productos
-/// - Desglose de totales
+/// Servicio para generar PDFs de notas de venta
+
 class PdfGeneratorService {
   /// Genera un PDF de nota de venta
   ///

@@ -5,12 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'pdf_generator_service.dart';
 
 /// Servicio para enviar correos electrónicos con notas de venta en PDF
-/// usando Gmail SMTP directamente desde la app móvil.
 class EmailService {
-  // ⚠️ CREDENCIALES DE GMAIL
-  // Email: muebleriaespinozacorp@gmail.com
-  // App Password: kpqu lzgu xuqu fazg (sin espacios: kpqulzguxuqufazg)
-
   static const String _gmailUser = 'muebleriaespinozacorp@gmail.com';
   static const String _gmailAppPassword = 'kpqulzguxuqufazg';
 
