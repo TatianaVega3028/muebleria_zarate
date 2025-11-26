@@ -1,56 +1,42 @@
-// lib/services/favoritos_service.dart
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/producto.dart';
 
 class FavoritosService {
-  // Singleton
-  static final FavoritosService _instancia = FavoritosService._();
-  FavoritosService._();
+  // 🟤 Instancia única (singleton)
+  static final FavoritosService _instancia = FavoritosService._interno();
   factory FavoritosService() => _instancia;
+  FavoritosService._interno();
 
-  // Lista privada de favoritos
+  // 🟤 Lista interna de favoritos
   final List<Producto> _favoritos = [];
 
-  // Notificador para actualizar la UI (se incrementa cuando cambia la lista)
-  final ValueNotifier<int> favoritosNotifier = ValueNotifier<int>(0);
+  // 🟤 Notificador para saber si cambia la lista
+  final ValueNotifier<List<Producto>> favoritosNotifier = ValueNotifier([]);
 
-  // Obtener lista inmutable
-  List<Producto> get favoritos => List.unmodifiable(_favoritos);
+  // Getter: lista pública
+  List<Producto> get favoritos => _favoritos;
 
-  // Verificar si un producto está en favoritos por id
-  bool esFavorito(String id) {
-    return _favoritos.any((p) => p.id == id);
-  }
-
-  // Agregar
-  void agregar(Producto p) {
-    if (!esFavorito(p.id)) {
-      _favoritos.add(p);
-      favoritosNotifier.value++;
-    }
-  }
-
-  // Eliminar
-  void eliminar(String id) {
-    final removed = _favoritos.removeWhere((p) => p.id == id);
-    // removeWhere devuelve void; en todo caso notificamos siempre que llamen eliminar
-    favoritosNotifier.value++;
-  }
-
-  // Alternar favorito
+  // 🔥 Agregar / quitar favorito
   void toggleFavorito(Producto p) {
     if (esFavorito(p.id)) {
-      _favoritos.removeWhere((x) => x.id == p.id);
+      _favoritos.removeWhere((item) => item.id == p.id);
     } else {
       _favoritos.add(p);
     }
-    favoritosNotifier.value++;
+    favoritosNotifier.value = List.from(_favoritos);
   }
 
-  // Opcional: limpiar lista
-  void limpiar() {
-    _favoritos.clear();
-    favoritosNotifier.value++;
+  // 🔥 Eliminar por ID
+  void eliminar(String id) {
+    _favoritos.removeWhere((p) => p.id == id);
+    favoritosNotifier.value = List.from(_favoritos);
+  }
+
+  // 🔥 Saber si un producto YA es favorito
+  bool esFavorito(String id) {
+    return _favoritos.any((p) => p.id == id);
   }
 }
+
+
 
