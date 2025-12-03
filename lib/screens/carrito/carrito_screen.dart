@@ -6,7 +6,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/carrito_item.dart';
 import '../../services/carrito_service.dart';
 import '../../services/email_service.dart';
-
+import 'package:google_maps_flutter/google_maps_flutter.dart'; 
+import '../map/location_picker_screen.dart';
 class CarritoScreen extends StatefulWidget {
   const CarritoScreen({super.key});
 
@@ -26,7 +27,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
   final carritoService = CarritoService();
   final _formKey = GlobalKey<FormState>();
 
-  String direccion = "";
+// REEMPLAZAR String direccion = ""; POR:
+  List<Map<String, dynamic>> _misDirecciones = [];
+  Map<String, dynamic>? _direccionSeleccionada;  
   String telefono = "";
   String _metodoPago = "Efectivo";
   String _tipoEmpaquetado = "Simple";
@@ -61,22 +64,37 @@ class _CarritoScreenState extends State<CarritoScreen> {
     if (user == null) return;
 
     try {
-      final doc = await FirebaseFirestore.instance
+      // 1. Cargar teléfono (y dirección antigua por si acaso)
+      final docUser = await FirebaseFirestore.instance.collection("usuarios").doc(user.uid).get();
+      
+      if (docUser.exists) {
+        setState(() => telefono = docUser["telefono"] ?? "");
+      }
+
+      // 2. Cargar lista de direcciones
+      final querySnapshot = await FirebaseFirestore.instance
           .collection("usuarios")
           .doc(user.uid)
+          .collection("direcciones")
+          .orderBy("fecha", descending: true)
           .get();
 
-      if (doc.exists) {
+      if (querySnapshot.docs.isNotEmpty) {
+        final lista = querySnapshot.docs.map((d) {
+          var data = d.data();
+          data['id'] = d.id;
+          return data;
+        }).toList();
+
         setState(() {
-          direccion = doc["direccion"] ?? "";
-          telefono = doc["telefono"] ?? "";
+          _misDirecciones = lista;
+          _direccionSeleccionada = lista.first; // Seleccionar la más reciente
         });
       }
     } catch (e) {
-      debugPrint("Error cargando datos de usuario: $e");
+      debugPrint("Error cargando datos: $e");
     }
   }
-
   // ---------------------------------------------------------------------
   //  CÁLCULOS - ACTUALIZADOS PARA USAR EL NUEVO SERVICE
   // ---------------------------------------------------------------------
@@ -203,8 +221,8 @@ class _CarritoScreenState extends State<CarritoScreen> {
       return;
     }
 
-    if (direccion.isEmpty || telefono.isEmpty) {
-      _alerta("Completa tus datos de entrega", Colors.orange);
+    if (_direccionSeleccionada == null || telefono.isEmpty) {
+      _alerta("Selecciona una dirección de entrega", Colors.orange);
       return;
     }
 
@@ -240,7 +258,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
       "igv": resumen['igv']!,
       "envio": resumen['envio']!,
       "total": resumen['total']!,
-      "direccion": direccion,
+      "direccion": _direccionSeleccionada!['direccion'], // Referencia escrita
+      "direccion_etiqueta": _direccionSeleccionada!['etiqueta'], // Casa/Trabajo
+      "ubicacion_lat": _direccionSeleccionada!['lat'], // Coordenada Lat
+      "ubicacion_lng": _direccionSeleccionada!['lng'], // Coordenada Lng
       "telefono": telefono,
       "metodoPago": _metodoPago,
       "estado": "Pendiente",
@@ -284,7 +305,123 @@ class _CarritoScreenState extends State<CarritoScreen> {
       ),
     );
   }
+// --- LÓGICA DE DIRECCIONES ---
+  void _mostrarSelectorDirecciones() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Mis Direcciones", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            if (_misDirecciones.isEmpty) const Text("No tienes direcciones guardadas."),
+            
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _misDirecciones.length,
+                itemBuilder: (ctx, index) {
+                  final dir = _misDirecciones[index];
+                  return ListTile(
+                    leading: const Icon(Icons.location_on, color: primaryColor),
+                    title: Text(dir['etiqueta'] ?? "Ubicación"),
+                    subtitle: Text(dir['direccion'] ?? ""),
+                    onTap: () {
+                      setState(() => _direccionSeleccionada = dir);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _mostrarDialogoAgregarDireccion();
+              },
+              icon: const Icon(Icons.add_location_alt),
+              label: const Text("Agregar nueva dirección"),
+              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  void _mostrarDialogoAgregarDireccion() {
+    final etiquetaCtrl = TextEditingController();
+    final refCtrl = TextEditingController();
+    LatLng? ubicacion;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text("Nueva Dirección"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: etiquetaCtrl,
+                  decoration: const InputDecoration(labelText: "Nombre (Ej. Casa, Trabajo)", prefixIcon: Icon(Icons.label)),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: refCtrl,
+                  decoration: const InputDecoration(labelText: "Referencia escrita", prefixIcon: Icon(Icons.note)),
+                ),
+                const SizedBox(height: 15),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationPickerScreen()));
+                    if (result != null && result is LatLng) {
+                      setDialogState(() => ubicacion = result);
+                    }
+                  },
+                  icon: Icon(Icons.map, color: ubicacion != null ? Colors.green : Colors.grey),
+                  label: Text(ubicacion != null ? "Ubicación fijada ✓" : "Seleccionar en Mapa"),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+              ElevatedButton(
+                onPressed: () async {
+                  if (ubicacion == null || etiquetaCtrl.text.isEmpty) return;
+                  
+                  final nuevaDir = {
+                    "etiqueta": etiquetaCtrl.text,
+                    "direccion": refCtrl.text.isEmpty ? "Ubicación en mapa" : refCtrl.text,
+                    "lat": ubicacion!.latitude,
+                    "lng": ubicacion!.longitude,
+                    "fecha": FieldValue.serverTimestamp(),
+                  };
+                  
+                  final user = FirebaseAuth.instance.currentUser!;
+                  final ref = await FirebaseFirestore.instance.collection("usuarios").doc(user.uid).collection("direcciones").add(nuevaDir);
+                  
+                  nuevaDir['id'] = ref.id;
+                  setState(() {
+                    _misDirecciones.add(nuevaDir);
+                    _direccionSeleccionada = nuevaDir;
+                  });
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+                child: const Text("Guardar"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
   // ---------------------------------------------------------------------
   //  UI GENERAL
   // ---------------------------------------------------------------------
@@ -729,57 +866,59 @@ class _CarritoScreenState extends State<CarritoScreen> {
   Widget _buildDatosEntrega() {
     return Column(
       children: [
-        _itemEntrega("Dirección", direccion, Icons.location_on_outlined),
-        const SizedBox(height: 12),
-        _itemEntrega("Teléfono", telefono, Icons.phone_iphone_outlined),
-      ],
-    );
-  }
-
-  Widget _itemEntrega(String title, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+        InkWell(
+          onTap: _mostrarSelectorDirecciones,
+          child: Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
             ),
-            child: Icon(icon, color: primaryColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
+                const Icon(Icons.location_on_outlined, color: primaryColor, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _direccionSeleccionada != null ? _direccionSeleccionada!['etiqueta'] : "Seleccionar dirección",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      if (_direccionSeleccionada != null)
+                        Text(
+                          _direccionSeleccionada!['direccion'],
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value.isNotEmpty ? value : "No registrado",
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        // Teléfono (solo visualización o edición simple)
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.phone_iphone, color: Colors.grey),
+              const SizedBox(width: 12),
+              Text(telefono.isNotEmpty ? telefono : "Sin teléfono registrado", style: const TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

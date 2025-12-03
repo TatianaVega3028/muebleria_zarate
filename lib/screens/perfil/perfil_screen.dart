@@ -61,12 +61,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   // 🔹 LÓGICA DE FOTO (Solución Gratis / Base64)
-  Future<void> _tomarYGuardarFoto(String uid) async {
+  // 🔹 LÓGICA DE FOTO MEJORADA (CÁMARA Y GALERÍA)
+  Future<void> _actualizarFoto(String uid, ImageSource source) async {
     final ImagePicker picker = ImagePicker();
     
     // Configuración para que la foto no pese mucho (vital para Firestore)
     final XFile? image = await picker.pickImage(
-      source: ImageSource.camera, 
+      source: source, 
       maxWidth: 500,      
       imageQuality: 50,   
     );
@@ -103,12 +104,82 @@ class _PerfilScreenState extends State<PerfilScreen> {
       print("Error Base64: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error: La imagen es muy pesada."), backgroundColor: Colors.red),
+          const SnackBar(content: Text("Error al subir la imagen."), backgroundColor: Colors.red),
         );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
+  }
+
+  // 🔹 MENÚ PARA ELEGIR CÁMARA O GALERÍA
+  void _mostrarOpcionesFoto(String uid) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Cambiar foto de perfil",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4E342E)),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _botonOpcion(Icons.camera_alt_rounded, "Cámara", () {
+                    Navigator.pop(ctx);
+                    _actualizarFoto(uid, ImageSource.camera);
+                  }),
+                  _botonOpcion(Icons.photo_library_rounded, "Galería", () {
+                    Navigator.pop(ctx);
+                    _actualizarFoto(uid, ImageSource.gallery);
+                  }),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _botonOpcion(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6D4C41).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 30, color: const Color(0xFF6D4C41)),
+            ),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF5D4037))),
+          ],
+        ),
+      ),
+    );
   }
 
   // Ayudante para mostrar la imagen correcta
@@ -394,7 +465,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () => _tomarYGuardarFoto(user.uid),
+                        onTap: () => _mostrarOpcionesFoto(user.uid),
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
