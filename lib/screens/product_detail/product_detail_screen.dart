@@ -281,112 +281,110 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               itemBuilder: (_, i) {
                                 final prod = similares[i];
 
-                                return Container(
+                                return SizedBox(
                                   width: 170,
-                                  margin: const EdgeInsets.only(right: 12),
-                                  child: Card(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    elevation: 3,
-                                    child: Column(
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => ProductDetailScreen(
-                                                  productId: prod.id,
-                                                ),
-                                              ),
-                                            ).then((_) => setState(() {}));
-                                          },
-                                          child: ClipRRect(
-                                            borderRadius: const BorderRadius.vertical(
-                                                top: Radius.circular(14)),
-                                            child: CachedNetworkImage(
-                                              imageUrl: prod.fotos.isNotEmpty
-                                                  ? prod.fotos.first
-                                                  : "",
-                                              height: 120,
-                                              width: double.infinity,
-                                              fit: BoxFit.cover,
-                                              errorWidget: (_, __, ___) =>
-                                                  const Icon(Icons.broken_image),
-                                            ),
-                                          ),
+                                  height: 260,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(productId: prod.id),
                                         ),
-
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                prod.titulo,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                "S/ ${prod.precio.toStringAsFixed(2)}",
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.green,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // 🟫 BOTÓN AGREGAR (SIMILARES)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                                          child: SizedBox(
+                                      ).then((_) => setState(() {}));
+                                    },
+                                    child: Card(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 3,
+                                      child: Column(
+                                        children: [
+                                          // ---------------- IMAGEN ----------------
+                                          SizedBox(
+                                            height: 120,
                                             width: double.infinity,
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                _carrito.agregar(CarritoItem(
-                                                  id: prod.id,
-                                                  nombre: prod.titulo,
-                                                  precio: prod.precio,
-                                                  imagen: prod.fotos.isNotEmpty
-                                                      ? prod.fotos.first
-                                                      : '',
-                                                  cantidad: 1,
-                                                ));
-                                                setState(() {});
-
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        '${prod.titulo} agregado al carrito 🛒'),
-                                                    behavior: SnackBarBehavior.floating,
-                                                  ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: primaryColor,
-                                                foregroundColor: Colors.white,
-                                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                "Agregar",
-                                                style: TextStyle(fontSize: 13),
+                                            child: ClipRRect(
+                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                              child: CachedNetworkImage(
+                                                imageUrl: prod.fotos.isNotEmpty ? prod.fotos.first : "",
+                                                fit: BoxFit.cover,
+                                                errorWidget: (_, __, ___) =>
+                                                    const Center(child: Icon(Icons.broken_image, size: 48)),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+  
+                                          // -------------- CONTENIDO ----------------
+                                          Expanded(
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    prod.titulo,
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    "S/ ${prod.precio.toStringAsFixed(2)}",
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.green,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+  
+                                                  const Spacer(),
+  
+                                                  // ---------------- BOTÓN (NO NAVEGA) ----------------
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: ElevatedButton(
+                                                      onPressed: () {
+                                                        _carrito.agregar(CarritoItem(
+                                                          id: prod.id,
+                                                          nombre: prod.titulo,
+                                                          precio: prod.precio,
+                                                          imagen: prod.fotos.isNotEmpty ? prod.fotos.first : '',
+                                                          cantidad: 1,
+                                                        ));
+                                                        setState(() {});
+  
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('${prod.titulo} agregado al carrito 🛒'),
+                                                            behavior: SnackBarBehavior.floating,
+                                                          ),
+                                                        );
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.brown,
+                                                        foregroundColor: Colors.white,
+                                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(10),
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        "Agregar",
+                                                        style: TextStyle(fontSize: 13),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
