@@ -6,8 +6,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/carrito_item.dart';
 import '../../services/carrito_service.dart';
 import '../../services/email_service.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; 
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../map/location_picker_screen.dart';
+
 class CarritoScreen extends StatefulWidget {
   const CarritoScreen({super.key});
 
@@ -27,9 +28,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
   final carritoService = CarritoService();
   final _formKey = GlobalKey<FormState>();
 
-// REEMPLAZAR String direccion = ""; POR:
+  // REEMPLAZAR String direccion = ""; POR:
   List<Map<String, dynamic>> _misDirecciones = [];
-  Map<String, dynamic>? _direccionSeleccionada;  
+  Map<String, dynamic>? _direccionSeleccionada;
   String telefono = "";
   String _metodoPago = "Efectivo";
   String _tipoEmpaquetado = "Simple";
@@ -65,8 +66,11 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
     try {
       // 1. Cargar teléfono (y dirección antigua por si acaso)
-      final docUser = await FirebaseFirestore.instance.collection("usuarios").doc(user.uid).get();
-      
+      final docUser = await FirebaseFirestore.instance
+          .collection("usuarios")
+          .doc(user.uid)
+          .get();
+
       if (docUser.exists) {
         setState(() => telefono = docUser["telefono"] ?? "");
       }
@@ -95,6 +99,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
       debugPrint("Error cargando datos: $e");
     }
   }
+
   // ---------------------------------------------------------------------
   //  CÁLCULOS - ACTUALIZADOS PARA USAR EL NUEVO SERVICE
   // ---------------------------------------------------------------------
@@ -234,42 +239,65 @@ class _CarritoScreenState extends State<CarritoScreen> {
 
     setState(() => _isLoading = true);
 
-    // Usar el método de resumen del nuevo service para mayor precisión
-    final resumen = carritoService.obtenerResumenPedido(
-      costoEmpaquetado: costoEmpaquetado,
-    );
-
-    final pedido = {
-      "productos": carritoService.items
-          .map(
-            (p) => {
-              "id": p.id,
-              "nombre": p.nombre,
-              "precio": p.precio,
-              "cantidad": p.cantidad,
-              "subtotal": p.precio * p.cantidad,
-              "foto": p.imagen,
-            },
-          )
-          .toList(),
-      "subtotal": resumen['subtotal']!,
-      "costoEmpaquetado": resumen['costoEmpaquetado']!,
-      "tipoEmpaquetado": _tipoEmpaquetado,
-      "igv": resumen['igv']!,
-      "envio": resumen['envio']!,
-      "total": resumen['total']!,
-      "direccion": _direccionSeleccionada!['direccion'], // Referencia escrita
-      "direccion_etiqueta": _direccionSeleccionada!['etiqueta'], // Casa/Trabajo
-      "ubicacion_lat": _direccionSeleccionada!['lat'], // Coordenada Lat
-      "ubicacion_lng": _direccionSeleccionada!['lng'], // Coordenada Lng
-      "telefono": telefono,
-      "metodoPago": _metodoPago,
-      "estado": "Pendiente",
-      "fecha": FieldValue.serverTimestamp(),
-    };
-
     try {
       final user = FirebaseAuth.instance.currentUser!;
+
+      // ✅ GENERAR CÓDIGO ÚNICO SECUENCIAL (MZ00001, MZ00002, etc.)
+      final contadorRef = FirebaseFirestore.instance
+          .collection('configuracion')
+          .doc('contadores');
+
+      final String codigoPedido = await FirebaseFirestore.instance
+          .runTransaction<String>((transaction) async {
+            final snapshot = await transaction.get(contadorRef);
+
+            int nuevoNumero = 1;
+            if (snapshot.exists && snapshot.data()?['ultimoPedido'] != null) {
+              nuevoNumero = snapshot.data()!['ultimoPedido'] + 1;
+            }
+
+            transaction.set(contadorRef, {
+              'ultimoPedido': nuevoNumero,
+            }, SetOptions(merge: true));
+
+            return 'MZ${nuevoNumero.toString().padLeft(5, '0')}';
+          });
+
+      // Usar el método de resumen del nuevo service para mayor precisión
+      final resumen = carritoService.obtenerResumenPedido(
+        costoEmpaquetado: costoEmpaquetado,
+      );
+
+      final pedido = {
+        "codigoPedido": codigoPedido, // ✅ CÓDIGO ÚNICO
+        "productos": carritoService.items
+            .map(
+              (p) => {
+                "id": p.id,
+                "nombre": p.nombre,
+                "precio": p.precio,
+                "cantidad": p.cantidad,
+                "subtotal": p.precio * p.cantidad,
+                "foto": p.imagen,
+              },
+            )
+            .toList(),
+        "subtotal": resumen['subtotal']!,
+        "costoEmpaquetado": resumen['costoEmpaquetado']!,
+        "tipoEmpaquetado": _tipoEmpaquetado,
+        "igv": resumen['igv']!,
+        "envio": resumen['envio']!,
+        "total": resumen['total']!,
+        "direccion": _direccionSeleccionada!['direccion'],
+        "direccion_etiqueta": _direccionSeleccionada!['etiqueta'],
+        "ubicacion_lat": _direccionSeleccionada!['lat'],
+        "ubicacion_lng": _direccionSeleccionada!['lng'],
+        "telefono": telefono,
+        "metodoPago": _metodoPago,
+        "estado": "Pendiente",
+        "fecha": FieldValue.serverTimestamp(),
+      };
+
       final docRef = await FirebaseFirestore.instance
           .collection("usuarios")
           .doc(user.uid)
@@ -305,20 +333,27 @@ class _CarritoScreenState extends State<CarritoScreen> {
       ),
     );
   }
-// --- LÓGICA DE DIRECCIONES ---
+
+  // --- LÓGICA DE DIRECCIONES ---
   void _mostrarSelectorDirecciones() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Mis Direcciones", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Mis Direcciones",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
-            if (_misDirecciones.isEmpty) const Text("No tienes direcciones guardadas."),
-            
+            if (_misDirecciones.isEmpty)
+              const Text("No tienes direcciones guardadas."),
+
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -345,7 +380,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
               },
               icon: const Icon(Icons.add_location_alt),
               label: const Text("Agregar nueva dirección"),
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -369,43 +407,70 @@ class _CarritoScreenState extends State<CarritoScreen> {
               children: [
                 TextField(
                   controller: etiquetaCtrl,
-                  decoration: const InputDecoration(labelText: "Nombre (Ej. Casa, Trabajo)", prefixIcon: Icon(Icons.label)),
+                  decoration: const InputDecoration(
+                    labelText: "Nombre (Ej. Casa, Trabajo)",
+                    prefixIcon: Icon(Icons.label),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: refCtrl,
-                  decoration: const InputDecoration(labelText: "Referencia escrita", prefixIcon: Icon(Icons.note)),
+                  decoration: const InputDecoration(
+                    labelText: "Referencia escrita",
+                    prefixIcon: Icon(Icons.note),
+                  ),
                 ),
                 const SizedBox(height: 15),
                 OutlinedButton.icon(
                   onPressed: () async {
-                    final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationPickerScreen()));
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LocationPickerScreen(),
+                      ),
+                    );
                     if (result != null && result is LatLng) {
                       setDialogState(() => ubicacion = result);
                     }
                   },
-                  icon: Icon(Icons.map, color: ubicacion != null ? Colors.green : Colors.grey),
-                  label: Text(ubicacion != null ? "Ubicación fijada ✓" : "Seleccionar en Mapa"),
+                  icon: Icon(
+                    Icons.map,
+                    color: ubicacion != null ? Colors.green : Colors.grey,
+                  ),
+                  label: Text(
+                    ubicacion != null
+                        ? "Ubicación fijada ✓"
+                        : "Seleccionar en Mapa",
+                  ),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancelar"),
+              ),
               ElevatedButton(
                 onPressed: () async {
                   if (ubicacion == null || etiquetaCtrl.text.isEmpty) return;
-                  
+
                   final nuevaDir = {
                     "etiqueta": etiquetaCtrl.text,
-                    "direccion": refCtrl.text.isEmpty ? "Ubicación en mapa" : refCtrl.text,
+                    "direccion": refCtrl.text.isEmpty
+                        ? "Ubicación en mapa"
+                        : refCtrl.text,
                     "lat": ubicacion!.latitude,
                     "lng": ubicacion!.longitude,
                     "fecha": FieldValue.serverTimestamp(),
                   };
-                  
+
                   final user = FirebaseAuth.instance.currentUser!;
-                  final ref = await FirebaseFirestore.instance.collection("usuarios").doc(user.uid).collection("direcciones").add(nuevaDir);
-                  
+                  final ref = await FirebaseFirestore.instance
+                      .collection("usuarios")
+                      .doc(user.uid)
+                      .collection("direcciones")
+                      .add(nuevaDir);
+
                   nuevaDir['id'] = ref.id;
                   setState(() {
                     _misDirecciones.add(nuevaDir);
@@ -413,7 +478,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
                   });
                   Navigator.pop(context);
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text("Guardar"),
               ),
             ],
@@ -422,6 +490,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
       ),
     );
   }
+
   // ---------------------------------------------------------------------
   //  UI GENERAL
   // ---------------------------------------------------------------------
@@ -545,7 +614,6 @@ class _CarritoScreenState extends State<CarritoScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
@@ -877,21 +945,34 @@ class _CarritoScreenState extends State<CarritoScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.location_on_outlined, color: primaryColor, size: 28),
+                const Icon(
+                  Icons.location_on_outlined,
+                  color: primaryColor,
+                  size: 28,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _direccionSeleccionada != null ? _direccionSeleccionada!['etiqueta'] : "Seleccionar dirección",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        _direccionSeleccionada != null
+                            ? _direccionSeleccionada!['etiqueta']
+                            : "Seleccionar dirección",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       if (_direccionSeleccionada != null)
                         Text(
                           _direccionSeleccionada!['direccion'],
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),
@@ -914,7 +995,10 @@ class _CarritoScreenState extends State<CarritoScreen> {
             children: [
               const Icon(Icons.phone_iphone, color: Colors.grey),
               const SizedBox(width: 12),
-              Text(telefono.isNotEmpty ? telefono : "Sin teléfono registrado", style: const TextStyle(fontWeight: FontWeight.w500)),
+              Text(
+                telefono.isNotEmpty ? telefono : "Sin teléfono registrado",
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ],
           ),
         ),

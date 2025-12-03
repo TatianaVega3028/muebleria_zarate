@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -60,7 +61,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _userLoggedIn ? _buildHistorialContent() : _buildUsuarioNoLogueado(),
+      body: _userLoggedIn
+          ? _buildHistorialContent()
+          : _buildUsuarioNoLogueado(),
     );
   }
 
@@ -100,10 +103,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
             const SizedBox(height: 12),
             const Text(
               "Accede a tu cuenta para revisar todos tus pedidos anteriores y su estado actual",
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF8D6E63),
-              ),
+              style: TextStyle(fontSize: 16, color: Color(0xFF8D6E63)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 36),
@@ -125,10 +125,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 ),
                 child: const Text(
                   "Iniciar sesión",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -158,7 +155,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   // ---------------------------------------------------------------------
   Widget _buildHistorialContent() {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     // Consulta mejorada para asegurar el orden correcto
     final pedidosRef = FirebaseFirestore.instance
         .collection('usuarios')
@@ -194,7 +191,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               ),
               filled: true,
               fillColor: const Color(0xFFF5F5F5),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 16,
+                horizontal: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
@@ -205,7 +205,10 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF795548), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFF795548),
+                  width: 1.5,
+                ),
               ),
             ),
             onChanged: (value) {
@@ -219,22 +222,26 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey.shade200),
-            ),
+            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF795548).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.filter_alt_outlined, 
-                        size: 18, color: const Color(0xFF795548)),
+                    Icon(
+                      Icons.filter_alt_outlined,
+                      size: 18,
+                      color: const Color(0xFF795548),
+                    ),
                     const SizedBox(width: 6),
                     const Text(
                       "Filtrar por:",
@@ -259,20 +266,30 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                     value: filtroEstado,
                     isExpanded: true,
                     underline: const SizedBox(),
-                    icon: Icon(Icons.arrow_drop_down, color: const Color(0xFF795548)),
-                    items: [
-                      'Todos',
-                      'Pendiente',
-                      'En Proceso',
-                      'Completado',
-                      'Cancelado'
-                    ].map((e) => DropdownMenuItem(
-                      value: e,
-                      child: Text(
-                        e,
-                        style: const TextStyle(color: Color(0xFF5D4037)),
-                      ),
-                    )).toList(),
+                    icon: Icon(
+                      Icons.arrow_drop_down,
+                      color: const Color(0xFF795548),
+                    ),
+                    items:
+                        [
+                              'Todos',
+                              'Pendiente',
+                              'En Proceso',
+                              'Completado',
+                              'Cancelado',
+                            ]
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Text(
+                                  e,
+                                  style: const TextStyle(
+                                    color: Color(0xFF5D4037),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) => setState(() => filtroEstado = value!),
                   ),
                 ),
@@ -302,19 +319,19 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
 
               // FILTRO POR ESTADO
               if (filtroEstado != 'Todos') {
-                pedidos = pedidos
-                    .where((p) {
-                      final estado = p['estado'] ?? 'Pendiente';
-                      return estado == filtroEstado;
-                    })
-                    .toList();
+                pedidos = pedidos.where((p) {
+                  final estado = p['estado'] ?? 'Pendiente';
+                  return estado == filtroEstado;
+                }).toList();
               }
 
               // FILTRO POR BÚSQUEDA
               if (searchQuery.isNotEmpty) {
                 pedidos = pedidos.where((p) {
                   try {
-                    final productos = List<Map<String, dynamic>>.from(p['productos'] ?? []);
+                    final productos = List<Map<String, dynamic>>.from(
+                      p['productos'] ?? [],
+                    );
                     final productosStr = productos
                         .map((e) => (e['nombre'] ?? '').toLowerCase())
                         .join(" ");
@@ -362,7 +379,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       final productos = List<Map<String, dynamic>>.from(p['productos'] ?? []);
       final estado = p['estado'] ?? 'Pendiente';
       final total = (p['total'] ?? 0).toDouble();
-      
+
       // Manejo seguro de la fecha
       DateTime fecha;
       try {
@@ -402,9 +419,13 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           tilePadding: const EdgeInsets.all(16),
           collapsedBackgroundColor: Colors.white,
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          collapsedShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+
           // 🧾 CABECERA MEJORADA
           leading: Container(
             width: 50,
@@ -423,13 +444,38 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Pedido #${index + 1}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF8D6E63),
-                ),
+              Row(
+                children: [
+                  Text(
+                    "Pedido #${index + 1}",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF8D6E63),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF795548),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      (p.data() as Map<String, dynamic>?)?['codigoPedido'] ??
+                          'N/A',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(
@@ -443,10 +489,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
               const SizedBox(height: 4),
               Text(
                 "${_formatHora(fecha)}",
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF8D6E63),
-                ),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8D6E63)),
               ),
             ],
           ),
@@ -489,7 +532,9 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                   if (productos.isEmpty)
                     _buildEmptyProductos()
                   else
-                    ...productos.map((prod) => _buildProductoItem(prod)).toList(),
+                    ...productos
+                        .map((prod) => _buildProductoItem(prod))
+                        .toList(),
 
                   const SizedBox(height: 16),
 
@@ -509,10 +554,19 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                         _buildInfoRowMejorada("Dirección", direccion),
                         _buildInfoRowMejorada("Teléfono", telefono),
                         _buildInfoRowMejorada("Empaquetado", tipoEmpaquetado),
-                        _buildInfoRowMejorada("Costo empaquetado", "S/. ${costoEmpaquetado.toStringAsFixed(2)}"),
+                        _buildInfoRowMejorada(
+                          "Costo empaquetado",
+                          "S/. ${costoEmpaquetado.toStringAsFixed(2)}",
+                        ),
                         _buildInfoRowMejorada("Método de pago", metodoPago),
-                        _buildInfoRowMejorada("IGV", "S/. ${igv.toStringAsFixed(2)}"),
-                        _buildInfoRowMejorada("Envío", "S/. ${envio.toStringAsFixed(2)}"),
+                        _buildInfoRowMejorada(
+                          "IGV",
+                          "S/. ${igv.toStringAsFixed(2)}",
+                        ),
+                        _buildInfoRowMejorada(
+                          "Envío",
+                          "S/. ${envio.toStringAsFixed(2)}",
+                        ),
                       ],
                     ),
                   ),
@@ -558,7 +612,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       );
@@ -609,7 +663,8 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                           ),
                         ),
                       ),
-                      errorWidget: (context, url, error) => _buildPlaceholderIcon(),
+                      errorWidget: (context, url, error) =>
+                          _buildPlaceholderIcon(),
                     )
                   : _buildPlaceholderIcon(),
             ),
@@ -632,8 +687,14 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
                 ),
                 const SizedBox(height: 8),
                 _buildInfoRowMejorada("Cantidad", cantidad),
-                _buildInfoRowMejorada("Precio unitario", "S/. ${precio.toStringAsFixed(2)}"),
-                _buildInfoRowMejorada("Subtotal", "S/. ${subtotal.toStringAsFixed(2)}"),
+                _buildInfoRowMejorada(
+                  "Precio unitario",
+                  "S/. ${precio.toStringAsFixed(2)}",
+                ),
+                _buildInfoRowMejorada(
+                  "Subtotal",
+                  "S/. ${subtotal.toStringAsFixed(2)}",
+                ),
               ],
             ),
           ),
@@ -645,11 +706,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
   Widget _buildPlaceholderIcon() {
     return Container(
       color: Colors.grey.shade200,
-      child: const Icon(
-        Icons.chair_outlined,
-        color: Colors.grey,
-        size: 30,
-      ),
+      child: const Icon(Icons.chair_outlined, color: Colors.grey, size: 30),
     );
   }
 
@@ -664,9 +721,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
       child: const Center(
         child: Text(
           "No hay información de productos",
-          style: TextStyle(
-            color: Color(0xFF8D6E63),
-          ),
+          style: TextStyle(color: Color(0xFF8D6E63)),
         ),
       ),
     );
@@ -711,10 +766,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           const SizedBox(height: 16),
           const Text(
             "Cargando pedidos...",
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF8D6E63),
-            ),
+            style: TextStyle(fontSize: 16, color: Color(0xFF8D6E63)),
           ),
         ],
       ),
@@ -730,10 +782,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           const SizedBox(height: 16),
           const Text(
             "Error al cargar los pedidos",
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF5D4037),
-            ),
+            style: TextStyle(fontSize: 16, color: Color(0xFF5D4037)),
           ),
         ],
       ),
@@ -770,10 +819,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           const SizedBox(height: 8),
           const Text(
             "Realiza tu primer pedido para comenzar",
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF8D6E63),
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF8D6E63)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -801,7 +847,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            filtroEstado != 'Todos' 
+            filtroEstado != 'Todos'
                 ? "No hay pedidos con estado '$filtroEstado'"
                 : "No se encontraron pedidos",
             style: const TextStyle(
@@ -814,10 +860,7 @@ class _HistorialPedidosScreenState extends State<HistorialPedidosScreen> {
           const SizedBox(height: 8),
           const Text(
             "Intenta con otros filtros o términos de búsqueda",
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF8D6E63),
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF8D6E63)),
             textAlign: TextAlign.center,
           ),
         ],

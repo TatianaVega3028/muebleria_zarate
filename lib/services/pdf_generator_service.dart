@@ -35,7 +35,7 @@ class PdfGeneratorService {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // ENCABEZADO
-              _buildHeader(pedidoId, fechaStr, horaStr),
+              _buildHeader(pedido, pedidoId, fechaStr, horaStr),
               pw.SizedBox(height: 20),
               pw.Divider(thickness: 2),
               pw.SizedBox(height: 20),
@@ -65,7 +65,12 @@ class PdfGeneratorService {
   }
 
   /// Construye el encabezado del PDF
-  static pw.Widget _buildHeader(String pedidoId, String fecha, String hora) {
+  static pw.Widget _buildHeader(
+    Map<String, dynamic> pedido,
+    String pedidoId,
+    String fecha,
+    String hora,
+  ) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -120,7 +125,7 @@ class PdfGeneratorService {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'N° ${pedidoId.substring(0, 8).toUpperCase()}',
+                'N° ${pedido['codigoPedido'] ?? pedidoId.substring(0, 8).toUpperCase()}',
                 style: pw.TextStyle(
                   fontSize: 12,
                   fontWeight: pw.FontWeight.bold,

@@ -10,7 +10,6 @@ import '../carrito/carrito_screen.dart';
 import '../../services/favoritos_service.dart';
 import '../../screens/catalog/favoritos_page.dart';
 
-
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class CatalogScreen extends StatefulWidget {
@@ -87,13 +86,15 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
   }
 
   void _agregarAlCarrito(Producto p) {
-    _carritoService.agregar(CarritoItem(
-      id: p.id,
-      nombre: p.titulo,
-      precio: p.precio,
-      imagen: p.fotos.isNotEmpty ? p.fotos.first : '',
-      cantidad: 1,
-    ));
+    _carritoService.agregar(
+      CarritoItem(
+        id: p.id,
+        nombre: p.titulo,
+        precio: p.precio,
+        imagen: p.fotos.isNotEmpty ? p.fotos.first : '',
+        cantidad: 1,
+      ),
+    );
 
     setState(() {});
 
@@ -112,8 +113,9 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
     const background = Color(0xFFF9F5F3);
 
     final width = MediaQuery.of(context).size.width;
-    final crossAxis =
-        width > 1000 ? 4 : (width > 800 ? 3 : (width > 600 ? 2 : 2));
+    final crossAxis = width > 1000
+        ? 4
+        : (width > 800 ? 3 : (width > 600 ? 2 : 2));
 
     return Scaffold(
       backgroundColor: background,
@@ -127,7 +129,6 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-
           //Lo del icono de favoritos//
           IconButton(
             icon: const Icon(Icons.favorite_border, color: Colors.white),
@@ -143,7 +144,10 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                icon: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white,
+                ),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -211,19 +215,24 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
               height: 64,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 itemCount: _categorias.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final cat = _categorias[i];
-                  final selected = (selectedCategory.isEmpty && cat == 'Todas') ||
+                  final selected =
+                      (selectedCategory.isEmpty && cat == 'Todas') ||
                       selectedCategory == cat;
 
                   return ChoiceChip(
                     label: Text(cat),
                     selected: selected,
                     onSelected: (_) => setState(
-                        () => selectedCategory = (cat == 'Todas' ? '' : cat)),
+                      () => selectedCategory = (cat == 'Todas' ? '' : cat),
+                    ),
                     selectedColor: brown,
                     backgroundColor: const Color(0xFFD7CCC8),
                     labelStyle: TextStyle(
@@ -239,8 +248,8 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
               child: searching
                   ? const Center(child: CircularProgressIndicator())
                   : (searchQuery.isNotEmpty
-                      ? _buildSearchList(crossAxis, brown)
-                      : _buildStreamGrid(crossAxis, brown)),
+                        ? _buildSearchList(crossAxis, brown)
+                        : _buildStreamGrid(crossAxis, brown)),
             ),
           ],
         ),
@@ -255,7 +264,19 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
     if (searchResults!.isEmpty) {
       return const Center(child: Text('No se encontraron resultados'));
     }
-    return _buildGrid(searchResults!, crossAxis, brown);
+
+    // Aplicar filtro de categoría a los resultados de búsqueda
+    final filteredResults = selectedCategory.isEmpty
+        ? searchResults!
+        : searchResults!.where((p) => p.categoria == selectedCategory).toList();
+
+    if (filteredResults.isEmpty) {
+      return const Center(
+        child: Text('No se encontraron resultados en esta categoría'),
+      );
+    }
+
+    return _buildGrid(filteredResults, crossAxis, brown);
   }
 
   Widget _buildStreamGrid(int crossAxis, Color brown) {
@@ -315,7 +336,9 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -325,14 +348,18 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                         fit: BoxFit.cover,
                         placeholder: (_, __) =>
                             const Center(child: CircularProgressIndicator()),
-                        errorWidget: (_, __, ___) =>
-                            const Center(child: Icon(Icons.broken_image, size: 48)),
+                        errorWidget: (_, __, ___) => const Center(
+                          child: Icon(Icons.broken_image, size: 48),
+                        ),
                       )
                     else
                       Container(
                         color: Colors.brown[50],
-                        child:
-                            const Icon(Icons.chair, size: 48, color: Colors.brown),
+                        child: const Icon(
+                          Icons.chair,
+                          size: 48,
+                          color: Colors.brown,
+                        ),
                       ),
 
                     Positioned(
@@ -340,14 +367,17 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                       top: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: brown.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 4),
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                            ),
                           ],
                         ),
                         child: Text(
@@ -375,12 +405,17 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                             shape: BoxShape.circle,
                           ),
                           child: ValueListenableBuilder(
-                            valueListenable: FavoritosService().favoritosNotifier,
+                            valueListenable:
+                                FavoritosService().favoritosNotifier,
                             builder: (context, favoritos, _) {
-                              final esFavorito = FavoritosService().esFavorito(p.id);
+                              final esFavorito = FavoritosService().esFavorito(
+                                p.id,
+                              );
 
                               return Icon(
-                                esFavorito ? Icons.favorite : Icons.favorite_border,
+                                esFavorito
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
                                 color: esFavorito ? Colors.red : Colors.grey,
                                 size: 24,
                               );
@@ -389,7 +424,6 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                         ),
                       ),
                     ),
-
                   ],
                 ),
               ),
@@ -404,8 +438,7 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                     p.titulo,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, color: brown),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: brown),
                   ),
                   const SizedBox(height: 6),
 
@@ -414,8 +447,10 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                       Expanded(
                         child: Text(
                           p.categoria,
-                          style:
-                              const TextStyle(fontSize: 12, color: Colors.black54),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
                         ),
                       ),
                       Text(
@@ -444,8 +479,9 @@ class _CatalogScreenState extends State<CatalogScreen> with RouteAware {
                         minimumSize: const Size.fromHeight(38),
                         elevation: 2,
                       ),
-                      onPressed:
-                          p.stock > 0 ? () => _agregarAlCarrito(p) : null,
+                      onPressed: p.stock > 0
+                          ? () => _agregarAlCarrito(p)
+                          : null,
                     ),
                   ),
                 ],

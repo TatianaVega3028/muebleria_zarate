@@ -29,6 +29,8 @@ class EmailService {
       final smtpServer = gmail(_gmailUser, _gmailAppPassword);
 
       // 3. Preparar datos del pedido
+      final codigoPedido =
+          pedido['codigoPedido'] ?? pedidoId.substring(0, 8).toUpperCase();
       final productos = pedido['productos'] as List;
       final total = pedido['total'] as double;
       final direccion = pedido['direccion'] as String;
@@ -47,8 +49,7 @@ class EmailService {
       final message = Message()
         ..from = Address(_gmailUser, 'Mueblería Zárate')
         ..recipients.add(userEmail)
-        ..subject =
-            'Confirmación de Pedido #${pedidoId.substring(0, 8).toUpperCase()} - Mueblería Zárate'
+        ..subject = 'Confirmación de Pedido $codigoPedido - Mueblería Zárate'
         ..html =
             '''
 <!DOCTYPE html>
@@ -77,7 +78,7 @@ class EmailService {
       <p>Tu pedido ha sido registrado exitosamente. A continuación encontrarás los detalles:</p>
       
       <div class="highlight">
-        <p><strong>📦 Número de Pedido:</strong> #${pedidoId.substring(0, 8).toUpperCase()}</p>
+        <p><strong>📦 Código de Pedido:</strong> $codigoPedido</p>
         <p><strong>📅 Fecha:</strong> ${fecha.day}/${fecha.month}/${fecha.year} ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}</p>
         <p><strong>💰 Total:</strong> S/.${total.toStringAsFixed(2)}</p>
       </div>
@@ -108,8 +109,7 @@ class EmailService {
 
       // 5.1. Guardar PDF temporalmente para usar FileAttachment
       final tempDir = await getTemporaryDirectory();
-      final fileName =
-          'NotaVenta_${pedidoId.substring(0, 6).toUpperCase()}.pdf';
+      final fileName = 'NotaVenta_$codigoPedido.pdf';
       final pdfFile = File('${tempDir.path}/$fileName');
       await pdfFile.writeAsBytes(pdfBytes);
 
