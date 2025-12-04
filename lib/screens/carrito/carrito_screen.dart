@@ -833,7 +833,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
             const SizedBox(height: 16),
             _seccion("💳 Método de pago", _buildMetodoPago()),
             const SizedBox(height: 16),
-            _seccion("🎁 Tipo de empaquetado", _buildEmpaquetado()),
+            _seccion("🎁 Tipo de empaquetado por producto", _buildEmpaquetado()),
             const SizedBox(height: 16),
             _seccion("🧾 Resumen del pedido", _buildResumen()),
             const SizedBox(height: 24),
@@ -1338,9 +1338,9 @@ class _CarritoScreenState extends State<CarritoScreen> {
     return Column(
       children: [
         _radioEmpaque("Simple (Gratis)", "Simple", Icons.inventory_2_outlined),
-        _radioEmpaque("Doble (+S/.5)", "Doble", Icons.layers_outlined),
+        _radioEmpaque("Doble (+S/5 x unidad)", "Doble", Icons.layers_outlined),
         _radioEmpaque(
-          "Completo (+S/.10)",
+          "Completo (+S/10 x unidad)",
           "Completo",
           Icons.card_giftcard_outlined,
         ),
