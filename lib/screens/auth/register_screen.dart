@@ -4,6 +4,7 @@ import 'login_screen.dart';
 import 'package:muebleria_zarate/screens/home/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../map/location_picker_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -23,7 +24,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _etiquetaController = TextEditingController();
+  final _referenciaController = TextEditingController();
 
+  // Variables para ubicación
+  Map<String, dynamic>? _ubicacionSeleccionada;
   final AuthService _authService = AuthService();
 
   bool _isLoading = false;
@@ -32,9 +37,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final Color primaryColor = const Color(0xFF795548);
 
+  // 🔹 Función para abrir el selector de ubicación
+  Future<void> _seleccionarUbicacion() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LocationPickerScreen(),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _ubicacionSeleccionada = result;
+        _direccionController.text = result['direccion'];
+      });
+    }
+  }
+
+  // 🔹 Validar formulario
+  bool _validarFormulario() {
+    if (!_formKey.currentState!.validate()) return false;
+    if (_ubicacionSeleccionada == null) {
+      _showErrorDialog('Por favor selecciona una ubicación en el mapa');
+      return false;
+    }
+    if (_etiquetaController.text.trim().isEmpty) {
+      _showErrorDialog('Por favor ingresa una etiqueta para la dirección');
+      return false;
+    }
+    return true;
+  }
+
   // 🔹 Registrar usuario
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_validarFormulario()) return;
 
     setState(() => _isLoading = true);
 
@@ -46,17 +82,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null) {
-        // Guardar datos adicionales en Firestore
+        // Crear objeto con la información de ubicación completa
+        Map<String, dynamic> direccionData = {
+          'direccion': _direccionController.text.trim(),
+          'etiqueta': _etiquetaController.text.trim(),
+          'referencia': _referenciaController.text.trim().isNotEmpty 
+              ? _referenciaController.text.trim() 
+              : '',
+          'lat': _ubicacionSeleccionada!['latLng'].latitude,
+          'lng': _ubicacionSeleccionada!['latLng'].longitude,
+          'seleccionado': true,
+          'fecha': FieldValue.serverTimestamp(),
+        };
+
+        // Guardar datos del usuario en Firestore
         await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).set({
           'uid': user.uid,
           'email': user.email,
           'rol': 'cliente',
           'nombre': _nombreController.text.trim(),
           'apellidos': _apellidosController.text.trim(),
-          'direccion': _direccionController.text.trim(),
           'telefono': _telefonoController.text.trim(),
           'creadoEn': FieldValue.serverTimestamp(),
+          'direccionPrincipal': _direccionController.text.trim(),
         });
+
+        // Guardar la dirección seleccionada en la subcolección 'direcciones'
+        await FirebaseFirestore.instance
+            .collection('usuarios')
+            .doc(user.uid)
+            .collection('direcciones')
+            .add(direccionData);
       }
 
       if (mounted) {
@@ -86,6 +142,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Limpiar todos los controladores
+    _nombreController.dispose();
+    _apellidosController.dispose();
+    _direccionController.dispose();
+    _telefonoController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _etiquetaController.dispose();
+    _referenciaController.dispose();
+    super.dispose();
   }
 
   @override
@@ -166,13 +237,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Dirección
+                    // Dirección con selector de mapa
+                    _buildDireccionField(),
+                    const SizedBox(height: 16),
+
+                    // Etiqueta (Casa 2, Oficina, etc.)
                     _buildTextField(
-                      controller: _direccionController,
-                      label: "Dirección",
-                      icon: Icons.home,
+                      controller: _etiquetaController,
+                      label: "Etiqueta (ej: Casa, Oficina, Trabajo)",
+                      icon: Icons.label,
                       obscure: false,
-                      validator: (v) => v!.isEmpty ? 'Ingresa tu dirección' : null,
+                      validator: (v) => v!.isEmpty ? 'Ingresa una etiqueta para la dirección' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Referencia (opcional)
+                    _buildTextField(
+                      controller: _referenciaController,
+                      label: "Referencia (opcional)",
+                      icon: Icons.description,
+                      obscure: false,
+                      validator: null,
                     ),
                     const SizedBox(height: 16),
 
@@ -319,7 +404,96 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // 🔸 Widget de campo de texto reutilizable mejorado
+  // 🔸 Campo de dirección con selector de mapa
+  Widget _buildDireccionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: primaryColor.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: _direccionController,
+            readOnly: true,
+            onTap: _seleccionarUbicacion,
+            style: TextStyle(color: primaryColor),
+            decoration: InputDecoration(
+              labelText: "Dirección",
+              labelStyle: TextStyle(color: primaryColor.withOpacity(0.7)),
+              prefixIcon: Icon(Icons.location_on, color: primaryColor),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _ubicacionSeleccionada != null 
+                      ? Icons.check_circle 
+                      : Icons.map_outlined,
+                  color: _ubicacionSeleccionada != null 
+                      ? Colors.green 
+                      : primaryColor,
+                ),
+                onPressed: _seleccionarUbicacion,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: primaryColor.withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: primaryColor, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              hintText: "Selecciona tu ubicación en el mapa",
+              hintStyle: TextStyle(color: primaryColor.withOpacity(0.5)),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Selecciona tu dirección';
+              return null;
+            },
+          ),
+        ),
+        
+        // Indicador de ubicación seleccionada
+        if (_ubicacionSeleccionada != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Ubicación seleccionada ✓",
+                    style: TextStyle(
+                      color: Colors.green[800],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // 🔸 Widget de campo de texto reutilizable
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,

@@ -395,94 +395,369 @@ class _CarritoScreenState extends State<CarritoScreen> {
     final etiquetaCtrl = TextEditingController();
     final refCtrl = TextEditingController();
     LatLng? ubicacion;
+    String direccionTexto = "";
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text("Nueva Dirección"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: etiquetaCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Nombre (Ej. Casa, Trabajo)",
-                    prefixIcon: Icon(Icons.label),
+            title: const Text(
+              "Nueva Dirección",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: secondaryColor,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. CAMPO NOMBRE (REQUERIDO)
+                  const Text(
+                    "Nombre de la dirección *",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: refCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Referencia escrita",
-                    prefixIcon: Icon(Icons.note),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const LocationPickerScreen(),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: etiquetaCtrl,
+                    decoration: InputDecoration(
+                      hintText: "Ej: Casa, Trabajo, Departamento",
+                      hintStyle: TextStyle(color: Colors.grey.shade600),
+                      prefixIcon: const Icon(Icons.label_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
                       ),
-                    );
-                    if (result != null && result is LatLng) {
-                      setDialogState(() => ubicacion = result);
-                    }
-                  },
-                  icon: Icon(
-                    Icons.map,
-                    color: ubicacion != null ? Colors.green : Colors.grey,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 15),
                   ),
-                  label: Text(
-                    ubicacion != null
-                        ? "Ubicación fijada ✓"
-                        : "Seleccionar en Mapa",
+                  const SizedBox(height: 20),
+
+                  // 2. CAMPO UBICACIÓN (REQUERIDO)
+                  const Text(
+                    "Ubicación en el mapa *",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LocationPickerScreen(),
+                              ),
+                            );
+
+                            if (result != null) {
+                              if (result is Map<String, dynamic>) {
+                                // Nuevo formato con dirección
+                                setDialogState(() {
+                                  ubicacion = result['latLng'] as LatLng;
+                                  direccionTexto = result['direccion'] as String;
+                                });
+                              } else if (result is LatLng) {
+                                // Formato antiguo (solo coordenadas)
+                                setDialogState(() {
+                                  ubicacion = result;
+                                  direccionTexto = "Ubicación en mapa";
+                                });
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: ubicacion != null
+                                    ? Colors.green.shade400
+                                    : Colors.grey.shade400,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: ubicacion != null
+                                          ? Colors.green
+                                          : Colors.grey.shade600,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        direccionTexto.isNotEmpty
+                                            ? direccionTexto
+                                            : "Toca para seleccionar ubicación",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: direccionTexto.isNotEmpty
+                                              ? Colors.black87
+                                              : Colors.grey.shade600,
+                                          fontWeight: direccionTexto.isNotEmpty
+                                              ? FontWeight.w500
+                                              : FontWeight.normal,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ubicacion != null) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "Lat: ${ubicacion!.latitude.toStringAsFixed(6)} | Lng: ${ubicacion!.longitude.toStringAsFixed(6)}",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 110,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LocationPickerScreen(),
+                              ),
+                            );
+
+                            if (result != null) {
+                              if (result is Map<String, dynamic>) {
+                                // Nuevo formato con dirección
+                                setDialogState(() {
+                                  ubicacion = result['latLng'] as LatLng;
+                                  direccionTexto = result['direccion'] as String;
+                                });
+                              } else if (result is LatLng) {
+                                // Formato antiguo (solo coordenadas)
+                                setDialogState(() {
+                                  ubicacion = result;
+                                  direccionTexto = "Ubicación en mapa";
+                                });
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.map, size: 18),
+                          label: const Text(
+                            "Mapa",
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 3. CAMPO REFERENCIA (OPCIONAL)
+                  const Text(
+                    "Referencia adicional",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: refCtrl,
+                    maxLines: 3,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      hintText: "Ej: Frente al parque, segunda puerta azul...",
+                      hintStyle: TextStyle(color: Colors.grey.shade600),
+                      prefixIcon: const Icon(Icons.note_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+
+                  // Indicador de campos requeridos
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "Los campos marcados con * son obligatorios",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("Cancelar"),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                ),
+                child: const Text(
+                  "Cancelar",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
               ElevatedButton(
                 onPressed: () async {
-                  if (ubicacion == null || etiquetaCtrl.text.isEmpty) return;
+                  if (etiquetaCtrl.text.trim().isEmpty) {
+                    _alerta("Ingresa un nombre para la dirección", Colors.orange);
+                    return;
+                  }
 
-                  final nuevaDir = {
-                    "etiqueta": etiquetaCtrl.text,
-                    "direccion": refCtrl.text.isEmpty
-                        ? "Ubicación en mapa"
-                        : refCtrl.text,
-                    "lat": ubicacion!.latitude,
-                    "lng": ubicacion!.longitude,
-                    "fecha": FieldValue.serverTimestamp(),
-                  };
+                  if (ubicacion == null) {
+                    _alerta("Selecciona una ubicación en el mapa", Colors.orange);
+                    return;
+                  }
 
-                  final user = FirebaseAuth.instance.currentUser!;
-                  final ref = await FirebaseFirestore.instance
-                      .collection("usuarios")
-                      .doc(user.uid)
-                      .collection("direcciones")
-                      .add(nuevaDir);
-
-                  nuevaDir['id'] = ref.id;
-                  setState(() {
-                    _misDirecciones.add(nuevaDir);
-                    _direccionSeleccionada = nuevaDir;
+                  setDialogState(() {
+                    _isLoading = true;
                   });
-                  Navigator.pop(context);
+
+                  try {
+                    // Usar solo lo que el usuario escribió, no autocompletar
+                    final nuevaDir = {
+                      "etiqueta": etiquetaCtrl.text.trim(),
+                      "direccion": direccionTexto, // La dirección del mapa
+                      "referencia": refCtrl.text.trim(), // Referencia separada
+                      "lat": ubicacion!.latitude,
+                      "lng": ubicacion!.longitude,
+                      "fecha": FieldValue.serverTimestamp(),
+                    };
+
+                    final user = FirebaseAuth.instance.currentUser!;
+                    final ref = await FirebaseFirestore.instance
+                        .collection("usuarios")
+                        .doc(user.uid)
+                        .collection("direcciones")
+                        .add(nuevaDir);
+
+                    nuevaDir['id'] = ref.id;
+                    setState(() {
+                      _misDirecciones.insert(0, nuevaDir);
+                      _direccionSeleccionada = nuevaDir;
+                    });
+
+                    _alerta("✅ Dirección guardada exitosamente", Colors.green);
+                    Navigator.pop(context);
+                  } catch (e) {
+                    _alerta("Error al guardar dirección: $e", Colors.red);
+                  } finally {
+                    setDialogState(() {
+                      _isLoading = false;
+                    });
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                child: const Text("Guardar"),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        "Guardar Dirección",
+                        style: TextStyle(fontSize: 14),
+                      ),
               ),
             ],
           );
@@ -971,7 +1246,7 @@ class _CarritoScreenState extends State<CarritoScreen> {
                             color: Colors.grey.shade600,
                             fontSize: 14,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                     ],

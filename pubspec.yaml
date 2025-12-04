@@ -39,6 +39,9 @@ dependencies:
   # 🔹 Acceso a directorios temporales
   path_provider: ^2.1.1
 
+  geocoding: ^2.1.1
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
